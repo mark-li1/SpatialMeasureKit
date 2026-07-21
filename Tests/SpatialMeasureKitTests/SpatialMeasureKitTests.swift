@@ -125,3 +125,56 @@ struct AngleCalculatorTests {
         #expect(sut.computeAngle(from: a, vertex: vertex, to: vertex) == nil)
     }
 }
+
+@Suite("AreaCalculator")
+struct AreaCalculatorTests {
+    @Test func emptyInput() {
+        let sut = AreaCalculator()
+        #expect(sut.computeArea(from: []) == 0)
+    }
+    
+    @Test func onePoint() {
+        let sut = AreaCalculator()
+        #expect(sut.computeArea(from: [SIMD3<Float>(1, 0, 0)]) == 0)
+    }
+    
+    @Test func twoPoints() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 3, 0)]) - 0) < 0.001)
+    }
+    
+    @Test func triangle() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
+    }
+
+    @Test func square() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 0, 1), SIMD3<Float>(0, 0, 1)]) - 1) < 0.001)
+    }
+
+    @Test func rectangle() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4), SIMD3<Float>(0, 0, 4)]) - 12) < 0.001)
+    }
+
+    @Test func straightLine() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(0, 0, 3), SIMD3<Float>(0, 0, 4), SIMD3<Float>(0, 0, 5)])) < 0.001)
+    }
+
+    @Test func duplicateCornerPoints() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
+    }
+
+    @Test func duplicateMidEdge() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 2), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
+    }
+
+    @Test func duplicateNotFollowingPoint() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(4, 0, 0), SIMD3<Float>(0, 0, 0), SIMD3<Float>(4, 0, 4)]) - 0) < 0.001)
+    }
+}
