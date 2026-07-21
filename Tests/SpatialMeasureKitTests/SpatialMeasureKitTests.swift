@@ -1,4 +1,5 @@
 import Testing
+import simd
 @testable import SpatialMeasureKit
 
 @Suite("DistanceCalculator")
@@ -176,5 +177,66 @@ struct AreaCalculatorTests {
     @Test func duplicateNotFollowingPoint() {
         let sut = AreaCalculator()
         #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(4, 0, 0), SIMD3<Float>(0, 0, 0), SIMD3<Float>(4, 0, 4)]) - 0) < 0.001)
+    }
+}
+
+@Suite("HeightCalculator")
+struct HeightCalculatorTests {
+    // If the camera is aimed exactly at a point already sitting on the vertical line
+    // through bottomPoint, the ray intersects that line exactly there — so the result
+    // must equal the aimed point exactly, and `t` equals the aimed height exactly.
+
+    @Test func happyPath() throws {
+        let sut = HeightCalculator()
+        let bottomPoint = SIMD3<Float>(0, 0, 0)
+        let cameraPosition = SIMD3<Float>(3, 0, 0)
+        let aimPoint = SIMD3<Float>(0, 4, 0)
+        let cameraForward = simd_normalize(aimPoint - cameraPosition)
+
+        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        #expect(abs(result.x - 0) < 0.001)
+        #expect(abs(result.y - 4) < 0.001)
+        #expect(abs(result.z - 0) < 0.001)
+    }
+
+    @Test func boundaryNearZeroHeight() throws {
+        let sut = HeightCalculator()
+        let bottomPoint = SIMD3<Float>(0, 0, 0)
+        let cameraPosition = SIMD3<Float>(5, 0, 0)
+        let aimPoint = SIMD3<Float>(0, 0.01, 0)
+        let cameraForward = simd_normalize(aimPoint - cameraPosition)
+
+        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        #expect(abs(result.y - 0.01) < 0.001)
+    }
+
+    @Test func boundaryNearParallelStillValid() throws {
+        let sut = HeightCalculator()
+        let bottomPoint = SIMD3<Float>(0, 0, 0)
+        let cameraPosition = SIMD3<Float>(1, 0, 0)
+        let aimPoint = SIMD3<Float>(0, 20, 0)
+        let cameraForward = simd_normalize(aimPoint - cameraPosition)
+
+        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        #expect(abs(result.y - 20) < 0.01)
+    }
+
+    @Test func nilWhenLookingStraightUp() {
+        let sut = HeightCalculator()
+        let bottomPoint = SIMD3<Float>(0, 0, 0)
+        let cameraPosition = SIMD3<Float>(5, 0, 0)
+        let cameraForward = SIMD3<Float>(0, 1, 0)
+
+        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
+    }
+
+    @Test func nilWhenAimingBelowBase() {
+        let sut = HeightCalculator()
+        let bottomPoint = SIMD3<Float>(0, 0, 0)
+        let cameraPosition = SIMD3<Float>(5, 0, 0)
+        let aimPoint = SIMD3<Float>(0, -5, 0)
+        let cameraForward = simd_normalize(aimPoint - cameraPosition)
+
+        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
     }
 }
