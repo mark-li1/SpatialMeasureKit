@@ -201,6 +201,115 @@ struct AreaCalculatorTests {
         let sut = AreaCalculator()
         #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(4, 0, 0), SIMD3<Float>(0, 0, 0), SIMD3<Float>(4, 0, 4)]) - 0) < 0.001)
     }
+
+    @Test("Computes 12 for a 3×4 rectangle traced on a vertical wall")
+    func wallRectangle() {
+        let sut = AreaCalculator()
+        // Lies in the XZ-less, vertical XY plane — a 2D shoelace on x/z alone would see this
+        // polygon's shadow as a single line and return 0.
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 4, 0),
+            SIMD3<Float>(0, 4, 0),
+        ]
+        #expect(abs(sut.computeArea(from: points) - 12) < 0.001)
+    }
+
+    @Test("Computes 1 for a unit square tilted 45 degrees")
+    func tiltedSquare() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0.70710678, 0.70710678),
+            SIMD3<Float>(0, 0.70710678, 0.70710678),
+        ]
+        #expect(abs(sut.computeArea(from: points) - 1) < 0.001)
+    }
+
+    @Test("Area is unchanged when the polygon is rotated in space")
+    func rotationInvariant() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        let baseline = sut.computeArea(from: points)
+
+        let rotation = simd_quatf(angle: 0.83, axis: simd_normalize(SIMD3<Float>(1, 2, 3)))
+        let rotated = points.map { simd_act(rotation, $0) }
+
+        #expect(abs(sut.computeArea(from: rotated) - baseline) < 0.001)
+    }
+
+    @Test("Area is unchanged far from the world origin")
+    func farFromOrigin() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        let baseline = sut.computeArea(from: points)
+
+        let offset = SIMD3<Float>(1000, 1000, 1000)
+        let translated = points.map { $0 + offset }
+
+        #expect(abs(sut.computeArea(from: translated) - baseline) < 0.001)
+    }
+
+    @Test("Area is unchanged when winding order is reversed")
+    func reversedWinding() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        #expect(abs(sut.computeArea(from: points.reversed()) - sut.computeArea(from: points)) < 0.001)
+    }
+
+    @Test("Area stays within 1% of exact for a wall traced with small raycast noise")
+    func nearPlanarNoise() {
+        let sut = AreaCalculator()
+        // A 3×4 wall rectangle with each corner nudged up to 1cm off-plane.
+        let points = [
+            SIMD3<Float>(0, 0, 0.008),
+            SIMD3<Float>(3, 0, -0.006),
+            SIMD3<Float>(3, 4, 0.009),
+            SIMD3<Float>(0, 4, -0.004),
+        ]
+        #expect(abs(sut.computeArea(from: points) - 12) / 12 < 0.01)
+    }
+
+    @Test("planarityError is 0 for an exactly planar polygon")
+    func planarityErrorZeroForFlat() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        #expect(sut.planarityError(from: points) < 0.0001)
+    }
+
+    @Test("planarityError reflects a point pulled off the shared plane")
+    func planarityErrorDetectsOffPlanePoint() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 1.0, 4),
+        ]
+        #expect(sut.planarityError(from: points) > 0.15)
+    }
 }
 
 @Suite("HeightCalculator")
