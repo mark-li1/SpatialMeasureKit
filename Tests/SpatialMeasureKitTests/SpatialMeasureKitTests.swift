@@ -10,7 +10,7 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(3, 4, 0)
 
-        #expect(sut.compute(from: a, to: b) == 5)
+        #expect(sut.computeDistance(from: a, to: b) == 5)
     }
 
     @Test("Computes 0 for identical points")
@@ -18,7 +18,7 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let a = SIMD3<Float>(0, 0, 0)
 
-        #expect(sut.compute(from: a, to: a) == 0)
+        #expect(sut.computeDistance(from: a, to: a) == 0)
     }
 
     @Test("Computes 5 for negative coordinates")
@@ -27,7 +27,7 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(-3, -4, 0)
 
-        #expect(sut.compute(from: a, to: b) == 5)
+        #expect(sut.computeDistance(from: a, to: b) == 5)
     }
 
     @Test("Computes correct distance for a non-perfect-square input")
@@ -36,8 +36,149 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(1, 1, 1)
 
-        let result = sut.compute(from: a, to: b)
+        let result = sut.computeDistance(from: a, to: b)
         #expect(abs(result - 1.7320508) < 0.0001)
+    }
+
+    @Test("Computes 0 for empty input")
+    func lengthEmptyInput() {
+        let sut = DistanceCalculator()
+        #expect(sut.computeLength(from: []) == 0)
+    }
+
+    @Test("Computes 0 for a single point")
+    func lengthSinglePoint() {
+        let sut = DistanceCalculator()
+        #expect(sut.computeLength(from: [SIMD3<Float>(1, 2, 3)]) == 0)
+    }
+
+    @Test("Two points agree exactly with computeDistance")
+    func lengthTwoPointsMatchesDistance() {
+        let sut = DistanceCalculator()
+        let a = SIMD3<Float>(0, 0, 0)
+        let b = SIMD3<Float>(3, 4, 0)
+
+        #expect(sut.computeLength(from: [a, b]) == sut.computeDistance(from: a, to: b))
+    }
+
+    @Test("Sums consecutive segments across multiple points")
+    func lengthMultiSegmentSum() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+
+        #expect(abs(sut.computeLength(from: points) - 7) < 0.0001)
+    }
+
+    @Test("Treats the path as open: a unit square's four corners sum to 3, not 4")
+    func lengthIsOpenNotClosed() {
+        let sut = DistanceCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 1),
+        ]
+
+        #expect(abs(sut.computeLength(from: points) - 3) < 0.0001)
+    }
+
+    @Test("Consecutive duplicate points contribute 0 to the length")
+    func lengthDuplicateConsecutivePoint() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+
+        #expect(abs(sut.computeLength(from: points) - 7) < 0.0001)
+    }
+
+    @Test("Collinear points sum to the end-to-end distance")
+    func lengthCollinearPoints() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(4, 0, 0), SIMD3<Float>(5, 0, 0)]
+
+        #expect(abs(sut.computeLength(from: points) - 5) < 0.0001)
+    }
+
+    @Test("Length is unchanged far from the world origin")
+    func lengthFarFromOrigin() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+        let baseline = sut.computeLength(from: points)
+
+        let offset = SIMD3<Float>(1000, 1000, 1000)
+        let translated = points.map { $0 + offset }
+
+        #expect(abs(sut.computeLength(from: translated) - baseline) < 0.001)
+    }
+
+    @Test("Length is unchanged when the point order is reversed")
+    func lengthReversedOrder() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+
+        #expect(abs(sut.computeLength(from: points.reversed()) - sut.computeLength(from: points)) < 0.0001)
+    }
+
+    @Test("Computes 0 for empty input")
+    func perimeterEmptyInput() {
+        let sut = DistanceCalculator()
+        #expect(sut.computePerimeter(from: []) == 0)
+    }
+
+    @Test("Computes 0 for a single point")
+    func perimeterSinglePoint() {
+        let sut = DistanceCalculator()
+        #expect(sut.computePerimeter(from: [SIMD3<Float>(1, 2, 3)]) == 0)
+    }
+
+    @Test("Falls back to the open length for two points, not a there-and-back distance")
+    func perimeterTwoPointsFallsBackToLength() {
+        let sut = DistanceCalculator()
+        let a = SIMD3<Float>(0, 0, 0)
+        let b = SIMD3<Float>(3, 4, 0)
+
+        #expect(sut.computePerimeter(from: [a, b]) == sut.computeDistance(from: a, to: b))
+    }
+
+    @Test("Includes the closing segment: a unit square's four corners sum to 4, not 3")
+    func perimeterIncludesClosingSegment() {
+        let sut = DistanceCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 1),
+        ]
+
+        #expect(abs(sut.computePerimeter(from: points) - 4) < 0.0001)
+        #expect(abs(sut.computePerimeter(from: points) - sut.computeLength(from: points) - 1) < 0.0001)
+    }
+
+    @Test("Computes 12 for a 3-4-5 right triangle's perimeter")
+    func perimeterTriangle() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+
+        #expect(abs(sut.computePerimeter(from: points) - 12) < 0.0001)
+    }
+
+    @Test("Perimeter is unchanged far from the world origin")
+    func perimeterFarFromOrigin() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+        let baseline = sut.computePerimeter(from: points)
+
+        let offset = SIMD3<Float>(1000, 1000, 1000)
+        let translated = points.map { $0 + offset }
+
+        #expect(abs(sut.computePerimeter(from: translated) - baseline) < 0.001)
+    }
+
+    @Test("Perimeter is unchanged when the point order is reversed")
+    func perimeterReversedOrder() {
+        let sut = DistanceCalculator()
+        let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
+
+        #expect(abs(sut.computePerimeter(from: points.reversed()) - sut.computePerimeter(from: points)) < 0.0001)
     }
 }
 
