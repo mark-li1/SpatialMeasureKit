@@ -25,16 +25,4 @@ public struct AreaCalculator {
             worst = max(worst, distance)
         }
     }
-
-    /// Newell's method, computed about the centroid for float stability far from world origin.
-    private func newellNormal(from points: [SIMD3<Float>]) -> SIMD3<Float> {
-        let centroid = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
-        var normal = SIMD3<Float>.zero
-        for i in points.indices {
-            let current = points[i] - centroid
-            let next = points[(i + 1) % points.count] - centroid
-            normal += simd_cross(current, next)
-        }
-        return normal
-    }
 }
