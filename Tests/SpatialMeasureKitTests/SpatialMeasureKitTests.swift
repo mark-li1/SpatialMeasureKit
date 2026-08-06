@@ -751,3 +751,284 @@ struct PolygonTriangulatorTests {
         #expect(abs(translatedArea - baseline) < 0.01)
     }
 }
+
+@Suite("ValueFormatter")
+struct ValueFormatterTests {
+    /// Pinned so the decimal separator and grouping don't shift with the host machine's region.
+    private let sut = ValueFormatter(locale: Locale(identifier: "en_US"))
+
+    @Test("Formats a whole number of meters with two fraction digits")
+    func metricWholeMeters() {
+        #expect(sut.formatLength(meters: 3, system: .metric) == FormattedValue(value: "3.00", unit: .meters))
+    }
+
+    @Test("Formats a fractional length in meters")
+    func metricFractionalMeters() {
+        #expect(sut.formatLength(meters: 3.45, system: .metric) == FormattedValue(value: "3.45", unit: .meters))
+    }
+
+    @Test("Switches to whole centimeters below one meter")
+    func metricSwitchesToCentimeters() {
+        #expect(sut.formatLength(meters: 0.45, system: .metric) == FormattedValue(value: "45", unit: .centimeters))
+    }
+
+    @Test("Rounds centimeters to whole numbers")
+    func metricRoundsCentimeters() {
+        #expect(sut.formatLength(meters: 0.994, system: .metric) == FormattedValue(value: "99", unit: .centimeters))
+    }
+
+    @Test("Exactly one meter stays in meters")
+    func metricOneMeterBoundary() {
+        #expect(sut.formatLength(meters: 1, system: .metric) == FormattedValue(value: "1.00", unit: .meters))
+    }
+
+    @Test("Centimeters rounding up to 100 carry into meters instead of showing '100 CM'")
+    func metricCentimeterCarry() {
+        #expect(sut.formatLength(meters: 0.999, system: .metric) == FormattedValue(value: "1.00", unit: .meters))
+    }
+
+    @Test("Formats zero as centimeters")
+    func metricZero() {
+        #expect(sut.formatLength(meters: 0, system: .metric) == FormattedValue(value: "0", unit: .centimeters))
+    }
+
+    @Test("Honors a custom fraction-digit count")
+    func metricCustomFractionDigits() {
+        let result = sut.formatLength(meters: 3.456, system: .metric, fractionDigits: 1)
+
+        #expect(result == FormattedValue(value: "3.5", unit: .meters))
+    }
+
+    @Test("Uses the locale's decimal separator")
+    func metricLocalizedSeparator() {
+        let german = ValueFormatter(locale: Locale(identifier: "de_DE"))
+
+        #expect(german.formatLength(meters: 3.45, system: .metric) == FormattedValue(value: "3,45", unit: .meters))
+    }
+
+    @Test("Returns nil for a negative length")
+    func rejectsNegative() {
+        #expect(sut.formatLength(meters: -1, system: .metric) == nil)
+    }
+
+    @Test("Returns nil for NaN")
+    func rejectsNaN() {
+        #expect(sut.formatLength(meters: .nan, system: .metric) == nil)
+    }
+
+    @Test("Returns nil for infinity")
+    func rejectsInfinity() {
+        #expect(sut.formatLength(meters: .infinity, system: .metric) == nil)
+    }
+
+    // MARK: - Imperial
+
+    @Test("Formats feet with whole inches and a fraction")
+    func imperialFeetInchesAndFraction() {
+        #expect(sut.formatLength(meters: 3.45, system: .imperial)
+                == FormattedValue(value: "11' 3⅞\"", unit: .feetAndInches))
+    }
+
+    @Test("Omits a zero inch component: 10 feet reads '10\\'', not \"10' 0\\\"\"")
+    func imperialExactFeetOmitsInches() {
+        #expect(sut.formatLength(meters: 3.048, system: .imperial)
+                == FormattedValue(value: "10'", unit: .feetAndInches))
+    }
+
+    @Test("Omits a zero foot component: below a foot reads '8¼\"', not \"0' 8¼\\\"\"")
+    func imperialSubFootOmitsFeet() {
+        #expect(sut.formatLength(meters: 0.21, system: .imperial)
+                == FormattedValue(value: "8¼\"", unit: .feetAndInches))
+    }
+
+    @Test("Inches rounding up to twelve carry into feet instead of showing \"11' 12\\\"\"")
+    func imperialInchCarry() {
+        #expect(sut.formatLength(meters: 3.65759, system: .imperial)
+                == FormattedValue(value: "12'", unit: .feetAndInches))
+    }
+
+    @Test("Omits zero whole inches but keeps the fraction")
+    func imperialFractionWithoutWholeInches() {
+        #expect(sut.formatLength(meters: 0.307975, system: .imperial)
+                == FormattedValue(value: "1' ⅛\"", unit: .feetAndInches))
+    }
+
+    @Test("Formats zero as inches")
+    func imperialZero() {
+        #expect(sut.formatLength(meters: 0, system: .imperial)
+                == FormattedValue(value: "0\"", unit: .feetAndInches))
+    }
+
+    @Test("Rounds to the nearest eighth from both sides")
+    func imperialRoundsToNearestEighth() {
+        // Deliberately off the midpoint: exactly 1/16" is a tie, and which way a tie falls depends
+        // on Float's representation of it rather than on the rounding rule under test.
+        #expect(sut.formatLength(meters: 0.0254 * 0.1, system: .imperial)   // 0.8 eighths
+                == FormattedValue(value: "⅛\"", unit: .feetAndInches))
+        #expect(sut.formatLength(meters: 0.0254 * 0.05, system: .imperial)  // 0.4 eighths
+                == FormattedValue(value: "0\"", unit: .feetAndInches))
+    }
+
+    @Test("fractionDigits does not affect imperial output")
+    func imperialIgnoresFractionDigits() {
+        let coarse = sut.formatLength(meters: 3.45, system: .imperial, fractionDigits: 0)
+        let fine = sut.formatLength(meters: 3.45, system: .imperial, fractionDigits: 5)
+
+        #expect(coarse == fine)
+    }
+
+    @Test("Returns nil rather than trapping for a length too large to count in eighths")
+    func imperialRejectsUncountableLength() {
+        #expect(sut.formatLength(meters: 1e30, system: .imperial) == nil)
+    }
+
+    // MARK: - Area
+
+    @Test("Formats a metric area with two fraction digits")
+    func areaMetric() {
+        #expect(sut.formatArea(squareMeters: 3.45, system: .metric)
+                == FormattedValue(value: "3.45", unit: .squareMeters))
+    }
+
+    @Test("Converts one square meter to square feet")
+    func areaOneSquareMeterInSquareFeet() {
+        #expect(sut.formatArea(squareMeters: 1, system: .imperial)
+                == FormattedValue(value: "10.76", unit: .squareFeet))
+    }
+
+    @Test("Converts a worked example to square feet")
+    func areaWorkedExample() {
+        #expect(sut.formatArea(squareMeters: 12.3, system: .imperial)
+                == FormattedValue(value: "132.40", unit: .squareFeet))
+    }
+
+    @Test("Formats zero area")
+    func areaZero() {
+        #expect(sut.formatArea(squareMeters: 0, system: .metric)
+                == FormattedValue(value: "0.00", unit: .squareMeters))
+    }
+
+    @Test("Returns nil for a negative area")
+    func areaRejectsNegative() {
+        #expect(sut.formatArea(squareMeters: -1, system: .metric) == nil)
+    }
+
+    @Test("Returns nil for NaN area")
+    func areaRejectsNaN() {
+        #expect(sut.formatArea(squareMeters: .nan, system: .metric) == nil)
+    }
+
+    @Test("Returns nil for infinite area")
+    func areaRejectsInfinity() {
+        #expect(sut.formatArea(squareMeters: .infinity, system: .imperial) == nil)
+    }
+
+    @Test("Unlike imperial length, fractionDigits is honored for imperial area")
+    func areaImperialHonorsFractionDigits() {
+        let coarse = sut.formatArea(squareMeters: 12.3, system: .imperial, fractionDigits: 0)
+        let fine = sut.formatArea(squareMeters: 12.3, system: .imperial, fractionDigits: 4)
+
+        #expect(coarse == FormattedValue(value: "132", unit: .squareFeet))
+        #expect(fine == FormattedValue(value: "132.3961", unit: .squareFeet))
+    }
+
+    @Test("Uses the locale's decimal separator for area")
+    func areaLocalizedSeparator() {
+        let german = ValueFormatter(locale: Locale(identifier: "de_DE"))
+
+        #expect(german.formatArea(squareMeters: 3.45, system: .metric)
+                == FormattedValue(value: "3,45", unit: .squareMeters))
+    }
+
+    @Test("Imperial area is always decimal — never a feet-and-inches-style combination")
+    func areaImperialHasNoLengthPunctuation() throws {
+        let result = try #require(sut.formatArea(squareMeters: 12.3, system: .imperial))
+
+        #expect(!result.value.contains("'"))
+        #expect(!result.value.contains("\""))
+    }
+}
+
+@Suite("AreaUnit")
+struct AreaUnitTests {
+    @Test("Exposes lowercase symbols, leaving casing to the caller")
+    func symbols() {
+        #expect(AreaUnit.squareMeters.symbol == "m²")
+        #expect(AreaUnit.squareFeet.symbol == "ft²")
+    }
+}
+
+@Suite("ImperialLength")
+struct ImperialLengthTests {
+    @Test("Splits a length into feet, whole inches, and eighths")
+    func decomposes() throws {
+        let sut = try #require(ImperialLength(meters: 3.45))
+
+        #expect(sut.feet == 11)
+        #expect(sut.inches == 3)
+        #expect(sut.eighths == 7)
+    }
+
+    @Test("A whole foot leaves no inch or eighth remainder")
+    func exactFootHasNoRemainder() throws {
+        let sut = try #require(ImperialLength(meters: 0.3048))
+
+        #expect(sut == ImperialLength(meters: 0.3048))
+        #expect(sut.feet == 1)
+        #expect(sut.inches == 0)
+        #expect(sut.eighths == 0)
+    }
+
+    @Test("Twelve inches never survives as an inch component")
+    func twelveInchesBecomesAFoot() throws {
+        let sut = try #require(ImperialLength(meters: 3.65759))
+
+        #expect(sut.feet == 12)
+        #expect(sut.inches == 0)
+    }
+
+    @Test("Reduces each eighth to its lowest-terms glyph")
+    func fractionGlyphs() throws {
+        let expected = ["", "⅛", "¼", "⅜", "½", "⅝", "¾", "⅞"]
+
+        for eighth in 0..<8 {
+            // One whole inch plus `eighth` eighths, so the whole-inch part is never empty.
+            let meters = Double(8 + eighth) * 0.0254 / 8
+            let sut = try #require(ImperialLength(meters: meters))
+
+            #expect(sut.inches == 1)
+            #expect(sut.eighths == eighth)
+            #expect(sut.fractionGlyph == expected[eighth])
+        }
+    }
+
+    @Test("Returns nil for a negative length")
+    func rejectsNegative() {
+        #expect(ImperialLength(meters: -1) == nil)
+    }
+
+    @Test("Returns nil for input too large to count in eighths of an inch")
+    func rejectsUncountable() {
+        #expect(ImperialLength(meters: 1e30) == nil)
+    }
+
+    @Test("Returns nil for non-finite input")
+    func rejectsNonFinite() {
+        #expect(ImperialLength(meters: .nan) == nil)
+        #expect(ImperialLength(meters: .infinity) == nil)
+    }
+}
+
+@Suite("LengthUnit")
+struct LengthUnitTests {
+    @Test("Exposes lowercase SI symbols, leaving casing to the caller")
+    func siSymbols() {
+        #expect(LengthUnit.meters.symbol == "m")
+        #expect(LengthUnit.centimeters.symbol == "cm")
+    }
+
+    @Test("Feet-and-inches has no separate symbol because the value carries its own")
+    func selfDescribingUnitHasNoSymbol() {
+        #expect(LengthUnit.feetAndInches.symbol.isEmpty)
+    }
+}

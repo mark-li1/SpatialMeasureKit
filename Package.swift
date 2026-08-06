@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SpatialMeasureKit",
     platforms: [
-        .iOS(.v13),
+        .iOS(.v15),
         .macOS(.v13),
     ],
     products: [
