@@ -452,6 +452,173 @@ struct AreaCalculatorTests {
         ]
         #expect(sut.planarityError(from: points) > 0.15)
     }
+
+    @Test("normal points straight up for a floor-plane square")
+    func normalForFloorSquare() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 1),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(0, 0, 0),
+        ]
+        let normal = try #require(sut.normal(from: points))
+        #expect(simd_distance(normal, SIMD3<Float>(0, 1, 0)) < 0.001)
+    }
+
+    @Test("normal points outward for a vertical wall square")
+    func normalForWallSquare() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 1, 0),
+            SIMD3<Float>(0, 1, 0),
+        ]
+        let normal = try #require(sut.normal(from: points))
+        #expect(abs(normal.x) < 0.001)
+        #expect(abs(normal.y) < 0.001)
+        #expect(abs(abs(normal.z) - 1) < 0.001)
+    }
+
+    @Test("normal is a unit vector")
+    func normalIsUnitLength() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        let normal = try #require(sut.normal(from: points))
+        #expect(abs(simd_length(normal) - 1) < 0.0001)
+    }
+
+    @Test("normal is nil for fewer than three points")
+    func normalNilForTooFewPoints() {
+        let sut = AreaCalculator()
+        #expect(sut.normal(from: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
+    }
+
+    @Test("normal is nil for collinear points")
+    func normalNilForCollinearPoints() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+        ]
+        #expect(sut.normal(from: points) == nil)
+    }
+
+    @Test("centroid is nil for empty input")
+    func centroidNilForEmpty() {
+        let sut = AreaCalculator()
+        #expect(sut.centroid(from: []) == nil)
+    }
+
+    @Test("centroid of a unit square is its exact center")
+    func centroidSquareExactCenter() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 1),
+        ]
+        let centroid = try #require(sut.centroid(from: points))
+        #expect(simd_distance(centroid, SIMD3<Float>(0.5, 0, 0.5)) < 0.001)
+    }
+
+    @Test("centroid of a triangle equals the plain vertex average")
+    func centroidTriangleEqualsVertexAverage() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+        ]
+        let centroid = try #require(sut.centroid(from: points))
+        let average = points.reduce(SIMD3<Float>.zero, +) / 3
+        #expect(simd_distance(centroid, average) < 0.001)
+    }
+
+    @Test("centroid is unchanged by an extra collinear point on one edge, unlike a plain average")
+    func centroidUnchangedByCollinearMidEdgePoint() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(0.5, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 1),
+        ]
+        let centroid = try #require(sut.centroid(from: points))
+        #expect(simd_distance(centroid, SIMD3<Float>(0.5, 0, 0.5)) < 0.001)
+
+        let plainAverage = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
+        #expect(simd_distance(plainAverage, SIMD3<Float>(0.5, 0, 0.5)) > 0.05)
+    }
+
+    @Test("centroid of a concave L-shape lands inside one of its triangles")
+    func centroidLShapeInsideTriangle() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(4, 0, 0),
+            SIMD3<Float>(4, 0, 2),
+            SIMD3<Float>(2, 0, 2),
+            SIMD3<Float>(2, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        let centroid = try #require(sut.centroid(from: points))
+
+        let triangles = PolygonTriangulator().triangulate(points)
+        #expect(!triangles.isEmpty)
+
+        func cross(_ u: SIMD3<Float>, _ v: SIMD3<Float>) -> Float { u.x * v.z - u.z * v.x }
+        func isInside(_ p: SIMD3<Float>, _ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) -> Bool {
+            let d1 = cross(b - a, p - a)
+            let d2 = cross(c - b, p - b)
+            let d3 = cross(a - c, p - c)
+            let hasNegative = (d1 < 0) || (d2 < 0) || (d3 < 0)
+            let hasPositive = (d1 > 0) || (d2 > 0) || (d3 > 0)
+            return !(hasNegative && hasPositive)
+        }
+
+        let insideAny = triangles.contains {
+            isInside(centroid, points[$0.a], points[$0.b], points[$0.c])
+        }
+        #expect(insideAny)
+    }
+
+    @Test("centroid falls back to the vertex average for collinear points")
+    func centroidCollinearFallsBackToAverage() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+        ]
+        let centroid = try #require(sut.centroid(from: points))
+        #expect(simd_distance(centroid, SIMD3<Float>(1, 0, 0)) < 0.001)
+    }
+
+    @Test("centroid is translation invariant")
+    func centroidTranslationInvariant() throws {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        let baseline = try #require(sut.centroid(from: points))
+
+        let offset = SIMD3<Float>(10, 5, -7)
+        let translated = try #require(sut.centroid(from: points.map { $0 + offset }))
+        #expect(simd_distance(translated, baseline + offset) < 0.001)
+    }
 }
 
 @Suite("HeightCalculator")
