@@ -15,12 +15,43 @@ public struct PolygonTriangulator {
         }
     }
 
+    /// Triangles over a vertex list that may extend the input with the points where an outline
+    /// crosses itself.
+    public struct Triangulation: Equatable, Sendable {
+        /// The input points at their original indices, followed by any points where the outline
+        /// crosses itself.
+        public let vertices: [SIMD3<Float>]
+        /// Triangles as indices into `vertices`, all counter-clockwise around `normal`.
+        public let triangles: [Triangle]
+        /// Unit normal of the plane the triangles lie in.
+        public let normal: SIMD3<Float>
+    }
+
     public init() {}
+
+    /// Triangles covering every region the outline `points` encloses. Unlike `triangulate(_:)`,
+    /// this handles outlines that cross or touch themselves: each enclosed region is covered once
+    /// (nonzero winding rule), matching `AreaCalculator.computeArea(from:)`. `nil` for fewer than
+    /// three points or degenerate (collinear) input.
+    public func triangulation(of points: [SIMD3<Float>]) -> Triangulation? {
+        if let arrangement = PolygonArrangement(crossingOutline: points) {
+            return Triangulation(
+                vertices: arrangement.vertices,
+                triangles: arrangement.triangles,
+                normal: arrangement.normal
+            )
+        }
+        let triangles = triangulate(points)
+        guard !triangles.isEmpty else { return nil }
+        let normal = newellNormal(from: points)
+        guard simd_length(normal) > .ulpOfOne else { return nil }
+        return Triangulation(vertices: points, triangles: triangles, normal: simd_normalize(normal))
+    }
 
     /// Triangles covering a simple (non-self-intersecting) planar polygon, as indices into
     /// `points`. Handles concave outlines via ear clipping. Returns an empty array for fewer than
     /// three points, or for degenerate input (collinear points, zero-area polygon) the algorithm
-    /// can't decompose.
+    /// can't decompose. For an outline that may cross itself, use `triangulation(of:)`.
     public func triangulate(_ points: [SIMD3<Float>]) -> [Triangle] {
         guard points.count >= 3 else { return [] }
 
@@ -32,14 +63,7 @@ public struct PolygonTriangulator {
         guard sourceIndices.count >= 3 else { return [] }
         let vertices = sourceIndices.map { points[$0] }
 
-        let normal = newellNormal(from: vertices)
-        guard let (u, v) = planeBasis(normal: normal) else { return [] }
-
-        let centroid = vertices.reduce(SIMD3<Float>.zero, +) / Float(vertices.count)
-        let projected = vertices.map { vertex -> SIMD2<Float> in
-            let offset = vertex - centroid
-            return SIMD2(simd_dot(offset, u), simd_dot(offset, v))
-        }
+        guard let projected = projectOntoPlane(vertices, normal: newellNormal(from: vertices)) else { return [] }
 
         // Ear clipping works on a counter-clockwise ring; flip if Newell's normal gave us the
         // opposite winding for this basis.
@@ -48,14 +72,19 @@ public struct PolygonTriangulator {
             ring.reverse()
         }
 
+        return clipEars(ring, points: projected).map {
+            Triangle(sourceIndices[$0.a], sourceIndices[$0.b], sourceIndices[$0.c])
+        }
+    }
+
+    /// Ear-clips a counter-clockwise `ring` of indices into `points`. The triangles use the same
+    /// indices as `ring` and keep its counter-clockwise winding.
+    func clipEars(_ ring: [Int], points: [SIMD2<Float>]) -> [Triangle] {
+        var ring = ring
         var triangles: [Triangle] = []
 
-        func emitTriangle(_ a: Int, _ b: Int, _ c: Int) {
-            triangles.append(Triangle(sourceIndices[a], sourceIndices[b], sourceIndices[c]))
-        }
-
         while ring.count > 3 {
-            guard let earPosition = findEar(in: ring, points: projected) else {
+            guard let earPosition = findEar(in: ring, points: points) else {
                 // No ear found in a full pass over the ring — self-intersecting or degenerate
                 // input the algorithm can't make progress on. Stop rather than loop forever.
                 break
@@ -64,45 +93,16 @@ public struct PolygonTriangulator {
             let previous = ring[(earPosition - 1 + ring.count) % ring.count]
             let current = ring[earPosition]
             let next = ring[(earPosition + 1) % ring.count]
-            emitTriangle(previous, current, next)
+            triangles.append(Triangle(previous, current, next))
 
             ring.remove(at: earPosition)
         }
 
         if ring.count == 3 {
-            emitTriangle(ring[0], ring[1], ring[2])
+            triangles.append(Triangle(ring[0], ring[1], ring[2]))
         }
 
         return triangles
-    }
-
-    /// Indices into `points` with consecutive duplicates collapsed. The polygon is a closed ring,
-    /// so a last point repeating the first counts as consecutive too.
-    private func deduplicatedIndices(of points: [SIMD3<Float>]) -> [Int] {
-        let epsilon: Float = 1e-6
-
-        var kept: [Int] = []
-        for index in points.indices {
-            if let last = kept.last, simd_distance(points[last], points[index]) <= epsilon { continue }
-            kept.append(index)
-        }
-
-        if kept.count >= 2, let first = kept.first, let last = kept.last,
-           simd_distance(points[first], points[last]) <= epsilon {
-            kept.removeLast()
-        }
-
-        return kept
-    }
-
-    private func signedArea(of ring: [Int], points: [SIMD2<Float>]) -> Float {
-        var sum: Float = 0
-        for i in ring.indices {
-            let p = points[ring[i]]
-            let q = points[ring[(i + 1) % ring.count]]
-            sum += p.x * q.y - q.x * p.y
-        }
-        return sum / 2
     }
 
     /// Finds the index *within `ring`* (not the point index itself) of a vertex that can be
@@ -130,7 +130,7 @@ public struct PolygonTriangulator {
     }
 
     private func isConvex(_ previous: SIMD2<Float>, _ current: SIMD2<Float>, _ next: SIMD2<Float>) -> Bool {
-        cross(current - previous, next - current) > 0
+        cross2D(current - previous, next - current) > 0
     }
 
     private func isInsideTriangle(
@@ -139,16 +139,12 @@ public struct PolygonTriangulator {
         _ b: SIMD2<Float>,
         _ c: SIMD2<Float>
     ) -> Bool {
-        let d1 = cross(b - a, point - a)
-        let d2 = cross(c - b, point - b)
-        let d3 = cross(a - c, point - c)
+        let d1 = cross2D(b - a, point - a)
+        let d2 = cross2D(c - b, point - b)
+        let d3 = cross2D(a - c, point - c)
 
         let hasNegative = (d1 < 0) || (d2 < 0) || (d3 < 0)
         let hasPositive = (d1 > 0) || (d2 > 0) || (d3 > 0)
         return !(hasNegative && hasPositive)
-    }
-
-    private func cross(_ a: SIMD2<Float>, _ b: SIMD2<Float>) -> Float {
-        a.x * b.y - a.y * b.x
     }
 }

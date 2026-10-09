@@ -619,6 +619,145 @@ struct AreaCalculatorTests {
         let translated = try #require(sut.centroid(from: points.map { $0 + offset }))
         #expect(simd_distance(translated, baseline + offset) < 0.001)
     }
+
+    private let bowTie = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(2, 0, 0),
+        SIMD3<Float>(0, 0, 2),
+        SIMD3<Float>(2, 0, 2),
+    ]
+
+    private let unevenBowTie = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(3, 0, 0),
+        SIMD3<Float>(0, 0, 1),
+        SIMD3<Float>(1, 0, 1),
+    ]
+
+    private func pentagram(radius: Float) -> [SIMD3<Float>] {
+        (0..<5).map { k in
+            let angle = Float.pi / 2 + Float((2 * k) % 5) * 2 * .pi / 5
+            return SIMD3<Float>(radius * cos(angle), 0, radius * sin(angle))
+        }
+    }
+
+    private func starOutline(radius: Float) -> [SIMD3<Float>] {
+        let innerRadius = radius * cos(2 * .pi / 5) / cos(.pi / 5)
+        return (0..<10).map { i in
+            let r = i.isMultiple(of: 2) ? radius : innerRadius
+            let angle = Float.pi / 2 + Float(i) * .pi / 5
+            return SIMD3<Float>(r * cos(angle), 0, r * sin(angle))
+        }
+    }
+
+    @Test("Counts both loops of a bow-tie instead of cancelling them")
+    func bowTieArea() {
+        let sut = AreaCalculator()
+        #expect(simd_length(newellNormal(from: bowTie)) < 0.001)
+        #expect(abs(sut.computeArea(from: bowTie) - 2) < 0.001)
+    }
+
+    @Test("Bow-tie area doesn't depend on drawing direction")
+    func bowTieReversed() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: bowTie.reversed()) - 2) < 0.001)
+    }
+
+    @Test("Adds the loops of an uneven bow-tie: 1.125 + 0.125, not their 1.0 difference")
+    func unevenBowTieArea() {
+        let sut = AreaCalculator()
+        #expect(abs(sut.computeArea(from: unevenBowTie) - 1.25) < 0.001)
+    }
+
+    @Test("Counts the middle of a 5-point star once, like its simple 10-point outline")
+    func pentagramUnion() {
+        let sut = AreaCalculator()
+        let crossed = sut.computeArea(from: pentagram(radius: 2))
+        let simple = sut.computeArea(from: starOutline(radius: 2))
+        #expect(abs(crossed - simple) < 0.01)
+    }
+
+    @Test("An outline traced twice counts its area once")
+    func tracedTwice() {
+        let sut = AreaCalculator()
+        let square = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 1),
+        ]
+        #expect(abs(sut.computeArea(from: square + square) - 1) < 0.001)
+    }
+
+    @Test("Two loops touching at one shared corner add up instead of cancelling")
+    func loopsSharingACorner() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 2),
+            SIMD3<Float>(2, 0, 2),
+            SIMD3<Float>(1, 0, 1),
+        ]
+        #expect(abs(sut.computeArea(from: points) - 2) < 0.001)
+    }
+
+    @Test("An outline that runs back along its first edge keeps the full area")
+    func runsBackAlongFirstEdge() {
+        let sut = AreaCalculator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+            SIMD3<Float>(2, 0, 2),
+            SIMD3<Float>(0, 0, 2),
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+        ]
+        #expect(abs(sut.computeArea(from: points) - 4) < 0.001)
+    }
+
+    @Test("Crossed outline area is unchanged far from the world origin")
+    func crossedFarFromOrigin() {
+        let sut = AreaCalculator()
+        let offset = SIMD3<Float>(1000, 1000, 1000)
+        #expect(abs(sut.computeArea(from: bowTie.map { $0 + offset }) - 2) < 0.01)
+    }
+
+    @Test("Small height noise doesn't change a crossed outline's area")
+    func crossedWithNoise() {
+        let sut = AreaCalculator()
+        let noise: [Float] = [0.004, -0.003, 0.005, -0.002]
+        let noisy = zip(bowTie, noise).map { point, dy in point + SIMD3<Float>(0, dy, 0) }
+        #expect(abs(sut.computeArea(from: noisy) - 2) < 0.02)
+    }
+
+    @Test("Centroid of a crossed outline weights each loop by its area")
+    func crossedCentroid() throws {
+        let sut = AreaCalculator()
+        let centroid = try #require(sut.centroid(from: unevenBowTie))
+        #expect(simd_distance(centroid, SIMD3<Float>(1.18333, 0, 0.31667)) < 0.001)
+    }
+
+    @Test("Outlines that never touch themselves keep the simple-polygon path")
+    func simpleOutlinesSkipArrangement() {
+        let square = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(0, 0, 1),
+        ]
+        let pointMidEdge = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+            SIMD3<Float>(2, 0, 2),
+            SIMD3<Float>(0, 0, 2),
+        ]
+        #expect(PolygonArrangement(crossingOutline: square) == nil)
+        #expect(PolygonArrangement(crossingOutline: pointMidEdge) == nil)
+        #expect(PolygonArrangement(crossingOutline: starOutline(radius: 2)) == nil)
+    }
 }
 
 @Suite("HeightCalculator")
@@ -1023,6 +1162,96 @@ struct PolygonTriangulatorTests {
         let translatedArea = summedArea(sut.triangulate(translated), points: translated)
 
         #expect(abs(translatedArea - baseline) < 0.01)
+    }
+
+    private let bowTie = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(2, 0, 0),
+        SIMD3<Float>(0, 0, 2),
+        SIMD3<Float>(2, 0, 2),
+    ]
+
+    private func pentagram(radius: Float) -> [SIMD3<Float>] {
+        (0..<5).map { k in
+            let angle = Float.pi / 2 + Float((2 * k) % 5) * 2 * .pi / 5
+            return SIMD3<Float>(radius * cos(angle), 0, radius * sin(angle))
+        }
+    }
+
+    private func isCounterClockwise(_ triangulation: PolygonTriangulator.Triangulation) -> Bool {
+        triangulation.triangles.allSatisfy { triangle in
+            let a = triangulation.vertices[triangle.a]
+            let b = triangulation.vertices[triangle.b]
+            let c = triangulation.vertices[triangle.c]
+            return simd_dot(simd_cross(b - a, c - a), triangulation.normal) > 0
+        }
+    }
+
+    @Test("triangulation(of:) keeps a simple polygon's vertices and triangles")
+    func triangulationOfSimplePolygon() throws {
+        let sut = PolygonTriangulator()
+        let triangulation = try #require(sut.triangulation(of: lShape))
+
+        #expect(triangulation.vertices == lShape)
+        #expect(triangulation.triangles == sut.triangulate(lShape))
+        #expect(abs(simd_length(triangulation.normal) - 1) < 0.001)
+        #expect(isCounterClockwise(triangulation))
+    }
+
+    @Test("A bow-tie gains its crossing point and both loops get covered")
+    func triangulationOfBowTie() throws {
+        let sut = PolygonTriangulator()
+        let triangulation = try #require(sut.triangulation(of: bowTie))
+
+        #expect(triangulation.vertices.count == 5)
+        #expect(Array(triangulation.vertices.prefix(4)) == bowTie)
+        #expect(simd_distance(triangulation.vertices[4], SIMD3<Float>(1, 0, 1)) < 0.001)
+        #expect(abs(summedArea(triangulation.triangles, points: triangulation.vertices) - 2) < 0.001)
+        #expect(isCounterClockwise(triangulation))
+    }
+
+    @Test("Crossed triangulation covers exactly computeArea, middle of the star included")
+    func triangulationOfPentagram() throws {
+        let sut = PolygonTriangulator()
+        let star = pentagram(radius: 2)
+        let triangulation = try #require(sut.triangulation(of: star))
+        let covered = summedArea(triangulation.triangles, points: triangulation.vertices)
+
+        #expect(abs(covered - areaCalculator.computeArea(from: star)) < 0.01)
+        #expect(isCounterClockwise(triangulation))
+        let coversMiddle = triangulation.triangles.contains { triangle in
+            contains(.zero, polygon: [triangle.a, triangle.b, triangle.c].map { triangulation.vertices[$0] })
+        }
+        #expect(coversMiddle)
+    }
+
+    @Test("A corner touching the middle of another edge splits into two covered regions")
+    func triangulationOfCornerTouchingEdge() throws {
+        let sut = PolygonTriangulator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(4, 0, 0),
+            SIMD3<Float>(4, 0, 2),
+            SIMD3<Float>(2, 0, 0),
+            SIMD3<Float>(0, 0, 2),
+        ]
+        let triangulation = try #require(sut.triangulation(of: points))
+
+        #expect(triangulation.vertices == points)
+        #expect(abs(summedArea(triangulation.triangles, points: triangulation.vertices) - 4) < 0.001)
+        #expect(abs(areaCalculator.computeArea(from: points) - 4) < 0.001)
+        #expect(isCounterClockwise(triangulation))
+    }
+
+    @Test("triangulation(of:) returns nil for too few or collinear points")
+    func triangulationOfDegenerateInput() {
+        let sut = PolygonTriangulator()
+        #expect(sut.triangulation(of: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
+        #expect(sut.triangulation(of: [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+        ]) == nil)
     }
 }
 

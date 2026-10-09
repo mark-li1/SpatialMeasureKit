@@ -3,13 +3,21 @@ import simd
 public struct AreaCalculator {
     public init() {}
 
+    /// Area enclosed by the outline `points`, in the square of their unit. An outline that crosses
+    /// or touches itself counts every enclosed region once (nonzero winding rule), so a bow-tie
+    /// measures the sum of its two loops rather than their difference.
     public func computeArea(from points: [SIMD3<Float>]) -> Float {
         guard points.count >= 3 else { return 0 }
+        if let arrangement = PolygonArrangement(crossingOutline: points) {
+            return arrangement.area
+        }
         return simd_length(newellNormal(from: points)) / 2
     }
 
     /// Unit vector perpendicular to the polygon's best-fit plane, via Newell's method.
-    /// `nil` for fewer than three points or degenerate (collinear) input.
+    /// `nil` for fewer than three points or degenerate (collinear) input. Loops of a
+    /// self-crossing outline that turn in opposite directions cancel here; use
+    /// `PolygonTriangulator.triangulation(of:)` for a normal that matches its triangles.
     public func normal(from points: [SIMD3<Float>]) -> SIMD3<Float>? {
         guard points.count >= 3 else { return nil }
         let normal = newellNormal(from: points)
@@ -18,35 +26,21 @@ public struct AreaCalculator {
         return normal / length
     }
 
-    /// Area-weighted centroid of the polygon. `nil` for empty input.
+    /// Area-weighted centroid of the polygon. `nil` for empty input. For an outline that crosses
+    /// itself, every enclosed region is weighted once, matching `computeArea(from:)`.
     ///
     /// Falls back to the plain vertex average for fewer than three points, or for degenerate
     /// (collinear) input the triangulator can't decompose — the area-weighted result is
     /// undefined there since there's no area to weight by.
     public func centroid(from points: [SIMD3<Float>]) -> SIMD3<Float>? {
         guard !points.isEmpty else { return nil }
+        let vertexAverage = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
 
+        if let arrangement = PolygonArrangement(crossingOutline: points) {
+            return weightedCentroid(of: arrangement.triangles, vertices: arrangement.vertices) ?? vertexAverage
+        }
         let triangles = PolygonTriangulator().triangulate(points)
-        guard !triangles.isEmpty else {
-            return points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
-        }
-
-        var weightedSum = SIMD3<Float>.zero
-        var totalWeight: Float = 0
-        for triangle in triangles {
-            let a = points[triangle.a]
-            let b = points[triangle.b]
-            let c = points[triangle.c]
-            let weight = simd_length(simd_cross(b - a, c - a)) / 2
-            weightedSum += (a + b + c) / 3 * weight
-            totalWeight += weight
-        }
-
-        guard totalWeight > .ulpOfOne else {
-            return points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
-        }
-
-        return weightedSum / totalWeight
+        return weightedCentroid(of: triangles, vertices: points) ?? vertexAverage
     }
 
     /// Worst-case distance, in meters, of any point from the polygon's best-fit plane.
@@ -65,5 +59,23 @@ public struct AreaCalculator {
             let distance = abs(simd_dot(point - centroid, unitNormal))
             worst = max(worst, distance)
         }
+    }
+
+    private func weightedCentroid(
+        of triangles: [PolygonTriangulator.Triangle],
+        vertices: [SIMD3<Float>]
+    ) -> SIMD3<Float>? {
+        var weightedSum = SIMD3<Float>.zero
+        var totalWeight: Float = 0
+        for triangle in triangles {
+            let a = vertices[triangle.a]
+            let b = vertices[triangle.b]
+            let c = vertices[triangle.c]
+            let weight = simd_length(simd_cross(b - a, c - a)) / 2
+            weightedSum += (a + b + c) / 3 * weight
+            totalWeight += weight
+        }
+        guard totalWeight > .ulpOfOne else { return nil }
+        return weightedSum / totalWeight
     }
 }
