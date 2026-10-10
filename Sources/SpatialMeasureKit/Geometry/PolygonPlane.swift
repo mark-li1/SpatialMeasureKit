@@ -59,6 +59,15 @@ func projectOntoPlane(_ points: [SIMD3<Float>], normal: SIMD3<Float>) -> [SIMD2<
     }
 }
 
+/// `point` in the same 2D coordinates `projectOntoPlane(_:normal:)` gives `points`. `nil` for a
+/// degenerate normal.
+func projectOntoPlane(_ point: SIMD3<Float>, of points: [SIMD3<Float>], normal: SIMD3<Float>) -> SIMD2<Float>? {
+    guard let (u, v) = planeBasis(normal: normal) else { return nil }
+    let centroid = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
+    let offset = point - centroid
+    return SIMD2(simd_dot(offset, u), simd_dot(offset, v))
+}
+
 /// The inverse of `projectOntoPlane(_:normal:)` for the same `points` and `normal`: a point in
 /// the plane's 2D coordinates, back in 3D. `nil` for a degenerate normal.
 func liftFromPlane(_ point: SIMD2<Float>, of points: [SIMD3<Float>], normal: SIMD3<Float>) -> SIMD3<Float>? {

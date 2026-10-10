@@ -14,16 +14,21 @@ public struct AreaCalculator {
     /// The largest circle that fits inside the region the outline `points` encloses, found with
     /// the polylabel algorithm (Agafonkin, 2016) to within `precision`, in the points' unit. Its
     /// centre is the inside point farthest from the outline — unlike `centroid(from:)`, it stays
-    /// inside concave shapes and away from the edges. For an outline that crosses itself, the
-    /// circle stays inside the enclosed regions (nonzero winding rule) and clear of every line of
-    /// the outline. `nil` for fewer than three points or degenerate (collinear) input.
+    /// inside concave shapes and away from the edges. Among circles within `precision` of the
+    /// largest, the one centred nearest `centroid(from:)` wins, so a shape with many equally roomy
+    /// points (a rectangle's whole middle line) gives one stable centre that moves only a little
+    /// when the outline does. For an outline that crosses itself, the circle stays inside the
+    /// enclosed regions (nonzero winding rule) and clear of every line of the outline. `nil` for
+    /// fewer than three points or degenerate (collinear) input.
     public func largestInscribedCircle(from points: [SIMD3<Float>], precision: Float = 0.001) -> InscribedCircle? {
         let ring = deduplicatedIndices(of: points)
         guard ring.count >= 3 else { return nil }
         let outline = ring.map { points[$0] }
         let normal = unsignedNormal(from: outline)
         guard let flat = projectOntoPlane(outline, normal: normal),
-              let pole = poleOfInaccessibility(of: flat, precision: max(precision, 1e-6)),
+              let regionCentroid = self.centroid(from: points),
+              let preferred = projectOntoPlane(regionCentroid, of: outline, normal: normal),
+              let pole = poleOfInaccessibility(of: flat, precision: max(precision, 1e-6), preferring: preferred),
               let center = liftFromPlane(pole.center, of: outline, normal: normal)
         else { return nil }
         return InscribedCircle(center: center, radius: pole.distance)

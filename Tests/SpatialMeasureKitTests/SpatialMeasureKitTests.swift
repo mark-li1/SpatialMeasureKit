@@ -814,6 +814,34 @@ struct AreaCalculatorTests {
         #expect(circle.center.x > 0.99 && circle.center.x < 3.01)
     }
 
+    @Test("Among equally roomy points, a rectangle's circle is centred in the middle")
+    func inscribedCircleRectanglePrefersMiddle() throws {
+        let sut = AreaCalculator()
+        let rectangle = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(4, 0, 0),
+            SIMD3<Float>(4, 0, 2),
+            SIMD3<Float>(0, 0, 2),
+        ]
+        let circle = try #require(sut.largestInscribedCircle(from: rectangle))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(2, 0, 1)) < 0.01)
+    }
+
+    @Test("Moving one corner by 1 mm doesn't make the centre jump along the middle line")
+    func inscribedCircleIsStable() throws {
+        let sut = AreaCalculator()
+        let nudged = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(4, 0, 0),
+            SIMD3<Float>(4, 0, 2.001),
+            SIMD3<Float>(0, 0, 2),
+        ]
+        let circle = try #require(sut.largestInscribedCircle(from: nudged))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(2, 0, 1)) < 0.02)
+    }
+
     @Test("In an L-shape the inner corner limits the circle to √2 / (1 + √2)")
     func inscribedCircleLShape() throws {
         let sut = AreaCalculator()
