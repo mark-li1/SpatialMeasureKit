@@ -59,6 +59,21 @@ func projectOntoPlane(_ points: [SIMD3<Float>], normal: SIMD3<Float>) -> [SIMD2<
     }
 }
 
+/// The inverse of `projectOntoPlane(_:normal:)` for the same `points` and `normal`: a point in
+/// the plane's 2D coordinates, back in 3D. `nil` for a degenerate normal.
+func liftFromPlane(_ point: SIMD2<Float>, of points: [SIMD3<Float>], normal: SIMD3<Float>) -> SIMD3<Float>? {
+    guard let (u, v) = planeBasis(normal: normal) else { return nil }
+    let centroid = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
+    return centroid + u * point.x + v * point.y
+}
+
+/// Shortest distance from `point` to the segment from `a` to `b`.
+func distance(from point: SIMD2<Float>, toSegmentFrom a: SIMD2<Float>, to b: SIMD2<Float>) -> Float {
+    let ab = b - a
+    let t = min(max(simd_dot(point - a, ab) / max(simd_length_squared(ab), .ulpOfOne), 0), 1)
+    return simd_distance(point, a + t * ab)
+}
+
 /// Indices into `points` with consecutive duplicates collapsed. The polygon is a closed ring,
 /// so a last point repeating the first counts as consecutive too.
 func deduplicatedIndices(of points: [SIMD3<Float>]) -> [Int] {

@@ -758,6 +758,174 @@ struct AreaCalculatorTests {
         #expect(PolygonArrangement(crossingOutline: pointMidEdge) == nil)
         #expect(PolygonArrangement(crossingOutline: starOutline(radius: 2)) == nil)
     }
+
+    private let squareTwoByTwo = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(2, 0, 0),
+        SIMD3<Float>(2, 0, 2),
+        SIMD3<Float>(0, 0, 2),
+    ]
+
+    private let uShape = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(3, 0, 0),
+        SIMD3<Float>(3, 0, 3),
+        SIMD3<Float>(2, 0, 3),
+        SIMD3<Float>(2, 0, 1),
+        SIMD3<Float>(1, 0, 1),
+        SIMD3<Float>(1, 0, 3),
+        SIMD3<Float>(0, 0, 3),
+    ]
+
+    private func isInside(_ point: SIMD3<Float>, outline: [SIMD3<Float>]) -> Bool {
+        windingNumber(of: SIMD2(point.x, point.z), around: outline.map { SIMD2($0.x, $0.z) }) != 0
+    }
+
+    private func isClearOfEveryLine(_ circle: InscribedCircle, outline: [SIMD3<Float>]) -> Bool {
+        let flat = outline.map { SIMD2($0.x, $0.z) }
+        let center = SIMD2(circle.center.x, circle.center.z)
+        return flat.indices.allSatisfy { i in
+            distance(from: center, toSegmentFrom: flat[i], to: flat[(i + 1) % flat.count]) >= circle.radius - 0.001
+        }
+    }
+
+    @Test("A 2×2 square's largest circle sits in the middle with radius 1")
+    func inscribedCircleSquare() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.largestInscribedCircle(from: squareTwoByTwo))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(1, 0, 1)) < 0.01)
+        #expect(abs(circle.radius - 1) < 0.002)
+    }
+
+    @Test("A 4×2 rectangle's largest circle has radius 1, centred between the long sides")
+    func inscribedCircleRectangle() throws {
+        let sut = AreaCalculator()
+        let rectangle = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(4, 0, 0),
+            SIMD3<Float>(4, 0, 2),
+            SIMD3<Float>(0, 0, 2),
+        ]
+        let circle = try #require(sut.largestInscribedCircle(from: rectangle))
+
+        #expect(abs(circle.radius - 1) < 0.002)
+        #expect(abs(circle.center.z - 1) < 0.01)
+        #expect(circle.center.x > 0.99 && circle.center.x < 3.01)
+    }
+
+    @Test("In an L-shape the inner corner limits the circle to √2 / (1 + √2)")
+    func inscribedCircleLShape() throws {
+        let sut = AreaCalculator()
+        let lShape = [
+            SIMD3<Float>(2, 0, 1),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(1, 0, 2),
+            SIMD3<Float>(0, 0, 2),
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+        ]
+        let expected = Float(2).squareRoot() / (1 + Float(2).squareRoot())
+        let circle = try #require(sut.largestInscribedCircle(from: lShape))
+
+        #expect(abs(circle.radius - expected) < 0.003)
+        #expect(simd_distance(circle.center, SIMD3<Float>(expected, 0, expected)) < 0.01)
+    }
+
+    @Test("A U-shape whose centroid falls outside it still gets a centre inside")
+    func inscribedCircleUShape() throws {
+        let sut = AreaCalculator()
+        let centroid = try #require(sut.centroid(from: uShape))
+        let circle = try #require(sut.largestInscribedCircle(from: uShape))
+
+        #expect(!isInside(centroid, outline: uShape))
+        #expect(isInside(circle.center, outline: uShape))
+        #expect(isClearOfEveryLine(circle, outline: uShape))
+        #expect(abs(circle.radius - Float(2).squareRoot() / (1 + Float(2).squareRoot())) < 0.003)
+    }
+
+    @Test("Drawing direction doesn't change the largest circle")
+    func inscribedCircleReversed() throws {
+        let sut = AreaCalculator()
+        let forward = try #require(sut.largestInscribedCircle(from: uShape))
+        let reversed = try #require(sut.largestInscribedCircle(from: uShape.reversed()))
+
+        #expect(abs(forward.radius - reversed.radius) < 0.002)
+    }
+
+    @Test("A bow-tie's largest circle sits inside one loop, not on the crossing")
+    func inscribedCircleBowTie() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.largestInscribedCircle(from: bowTie))
+
+        #expect(abs(circle.radius - 1 / (1 + Float(2).squareRoot())) < 0.003)
+        #expect(simd_distance(circle.center, SIMD3<Float>(1, 0, 1)) > 0.3)
+        #expect(isClearOfEveryLine(circle, outline: bowTie))
+    }
+
+    @Test("An uneven bow-tie's largest circle goes into the bigger loop")
+    func inscribedCircleUnevenBowTie() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.largestInscribedCircle(from: unevenBowTie))
+
+        #expect(circle.center.z < 0.75)
+        #expect(abs(circle.radius - 0.3498) < 0.003)
+    }
+
+    @Test("A 5-point star's largest circle fills its inner pentagon, clear of every line")
+    func inscribedCirclePentagram() throws {
+        let sut = AreaCalculator()
+        let star = pentagram(radius: 2)
+        let circle = try #require(sut.largestInscribedCircle(from: star))
+
+        #expect(simd_distance(circle.center, .zero) < 0.01)
+        #expect(abs(circle.radius - 2 * 0.381966 * 0.809017) < 0.003)
+        #expect(isClearOfEveryLine(circle, outline: star))
+    }
+
+    @Test("A circle measured on a vertical wall comes back on the wall")
+    func inscribedCircleOnWall() throws {
+        let sut = AreaCalculator()
+        let wall = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+            SIMD3<Float>(2, 2, 0),
+            SIMD3<Float>(0, 2, 0),
+        ]
+        let circle = try #require(sut.largestInscribedCircle(from: wall))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(1, 1, 0)) < 0.01)
+        #expect(abs(circle.radius - 1) < 0.002)
+    }
+
+    @Test("Largest circle is unchanged far from the world origin")
+    func inscribedCircleFarFromOrigin() throws {
+        let sut = AreaCalculator()
+        let offset = SIMD3<Float>(1000, 1000, 1000)
+        let circle = try #require(sut.largestInscribedCircle(from: squareTwoByTwo.map { $0 + offset }))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(1, 0, 1) + offset) < 0.01)
+        #expect(abs(circle.radius - 1) < 0.01)
+    }
+
+    @Test("A coarser precision still lands within that precision")
+    func inscribedCircleCoarsePrecision() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.largestInscribedCircle(from: squareTwoByTwo, precision: 0.1))
+
+        #expect(abs(circle.radius - 1) <= 0.1)
+    }
+
+    @Test("largestInscribedCircle returns nil for too few or collinear points")
+    func inscribedCircleDegenerate() {
+        let sut = AreaCalculator()
+        #expect(sut.largestInscribedCircle(from: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
+        #expect(sut.largestInscribedCircle(from: [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+        ]) == nil)
+    }
 }
 
 @Suite("HeightCalculator")

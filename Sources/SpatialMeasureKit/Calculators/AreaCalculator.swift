@@ -1,7 +1,33 @@
 import simd
 
+/// The largest circle that fits inside a polygon, lying in the polygon's best-fit plane.
+public struct InscribedCircle: Equatable, Sendable {
+    /// The pole of inaccessibility: the inside point farthest from the outline.
+    public let center: SIMD3<Float>
+    /// The distance from `center` to the nearest point of the outline, in the points' unit.
+    public let radius: Float
+}
+
 public struct AreaCalculator {
     public init() {}
+
+    /// The largest circle that fits inside the region the outline `points` encloses, found with
+    /// the polylabel algorithm (Agafonkin, 2016) to within `precision`, in the points' unit. Its
+    /// centre is the inside point farthest from the outline — unlike `centroid(from:)`, it stays
+    /// inside concave shapes and away from the edges. For an outline that crosses itself, the
+    /// circle stays inside the enclosed regions (nonzero winding rule) and clear of every line of
+    /// the outline. `nil` for fewer than three points or degenerate (collinear) input.
+    public func largestInscribedCircle(from points: [SIMD3<Float>], precision: Float = 0.001) -> InscribedCircle? {
+        let ring = deduplicatedIndices(of: points)
+        guard ring.count >= 3 else { return nil }
+        let outline = ring.map { points[$0] }
+        let normal = unsignedNormal(from: outline)
+        guard let flat = projectOntoPlane(outline, normal: normal),
+              let pole = poleOfInaccessibility(of: flat, precision: max(precision, 1e-6)),
+              let center = liftFromPlane(pole.center, of: outline, normal: normal)
+        else { return nil }
+        return InscribedCircle(center: center, radius: pole.distance)
+    }
 
     /// Area enclosed by the outline `points`, in the square of their unit. An outline that crosses
     /// or touches itself counts every enclosed region once (nonzero winding rule), so a bow-tie
