@@ -1920,18 +1920,34 @@ struct LevelCalculatorTests {
 
     @Test("Wraps around the ±180° boundary instead of jumping to ~360°")
     func wrapsAroundBoundary() throws {
-        // Cardinal-snapping keeps the absolute reading within [-45, 45], so a real captured
-        // `reference` (always itself a previous return value of this function) never approaches
-        // ±180° in practice. This exercises the wrap purely as a defensive property of the
-        // function's contract — it should still behave for any Float a caller happens to pass.
         let sut = LevelCalculator()
-        let radians: Float = 50 * .pi / 180 // snaps to the 90° cardinal, absolute = 50 - 90 = -40
+        let radians: Float = -170 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        // absolute=-40°, reference=170°: the short way from 170° to -40° is +150° (170→180≡-180→-40),
-        // not the naive -210° a plain subtraction would give.
         let result = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 170))
-        #expect(abs(result.degrees - 150) < 0.01)
+        #expect(abs(result.degrees - 20) < 0.01)
+    }
+
+    @Test("A locked reading stays continuous past the 45° edge switch")
+    func relativeRollPastCardinalBoundary() throws {
+        let sut = LevelCalculator()
+        let radians: Float = 50 * .pi / 180
+        let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
+
+        let result = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 30))
+        #expect(abs(result.degrees - 20) < 0.01)
+    }
+
+    @Test("A reference a quarter turn away reads the same, so a continuous angle works as one")
+    func referenceModuloQuarterTurn() throws {
+        let sut = LevelCalculator()
+        let radians: Float = 140 * .pi / 180
+        let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
+
+        let snapped = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 30))
+        let continuous = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 480))
+        #expect(abs(snapped.degrees - 20) < 0.01)
+        #expect(abs(continuous.degrees - 20) < 0.01)
     }
 
     @Test("Rolled 90° from the screen's own top edge but plumb relative to that edge reads 0°, not 90°")

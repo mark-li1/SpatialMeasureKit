@@ -82,8 +82,9 @@ public struct LevelCalculator {
     /// `computeTilt` for the complementary "is it flat" case.
     /// - deviceUp: same input as `computeTilt`. Only x/y are used — deliberately ignores lean
     ///   toward/away from the viewer, since that doesn't affect whether an edge is plumb.
-    /// - reference: a previously-computed absolute roll (degrees) to measure relative to; `nil`
-    ///   measures against true vertical.
+    /// - reference: the roll (degrees) to measure relative to, e.g. the device's angle when the
+    ///   user locked it. Only its value modulo 90° matters, so a previous `degrees` and a
+    ///   continuous angle both work. `nil` measures against true vertical.
     /// - Returns: `nil` when x and y are both negligible — deviceUp points nearly straight through
     ///   the screen, meaning the device is flat, not upright, and roll is undefined.
     public func computeRoll(deviceUp: SIMD3<Float>, relativeTo reference: Float? = nil) -> Roll? {
@@ -91,17 +92,13 @@ public struct LevelCalculator {
         guard horizontal > .ulpOfOne else { return nil }
         let direction = SIMD2(deviceUp.x, deviceUp.y) / horizontal
         let rawAngle = atan2(deviceUp.x, deviceUp.y) * 180 / .pi
+        let delta = rawAngle - (reference ?? 0)
         // Auto-detect which of the device's 4 physical edges is currently closest to "up" and
         // measure roll from THAT edge, not always the screen's own top edge — this is what makes
         // the reading correct whether the device is held with its top or one of its sides toward
         // true vertical (e.g. resting a side edge against a door frame to check it's plumb).
-        let nearestCardinal = (rawAngle / 90).rounded(.toNearestOrAwayFromZero) * 90
-        let absolute = rawAngle - nearestCardinal // naturally within [-45, 45]
-        let delta = absolute - (reference ?? 0)
-        // Wrap into (-180, 180], so e.g. 179° measured against a -179° reference reads as a small
-        // 2° difference, not a spurious ~358°.
-        let wrapped = delta.truncatingRemainder(dividingBy: 360)
-        let degrees = wrapped > 180 ? wrapped - 360 : (wrapped <= -180 ? wrapped + 360 : wrapped)
+        let nearestCardinal = (delta / 90).rounded(.toNearestOrAwayFromZero) * 90
+        let degrees = delta - nearestCardinal // naturally within [-45, 45]
         return Roll(degrees: degrees, direction: direction)
     }
 }
