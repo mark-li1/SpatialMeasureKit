@@ -34,6 +34,22 @@ public struct AreaCalculator {
         return InscribedCircle(center: center, radius: pole.distance)
     }
 
+    /// How far `point` is from the nearest line of the outline `points`, measured in the outline's
+    /// best-fit plane: positive inside the enclosed regions (nonzero winding rule), negative
+    /// outside. Compare it with `largestInscribedCircle(from:precision:)`'s radius to tell whether a
+    /// spot still has most of the room the outline offers. `nil` for fewer than three points or
+    /// degenerate (collinear) input.
+    public func clearance(at point: SIMD3<Float>, in points: [SIMD3<Float>]) -> Float? {
+        let ring = deduplicatedIndices(of: points)
+        guard ring.count >= 3 else { return nil }
+        let outline = ring.map { points[$0] }
+        let normal = unsignedNormal(from: outline)
+        guard let flat = projectOntoPlane(outline, normal: normal),
+              let flatPoint = projectOntoPlane(point, of: outline, normal: normal)
+        else { return nil }
+        return signedDistance(from: flatPoint, to: flat)
+    }
+
     /// Area enclosed by the outline `points`, in the square of their unit. An outline that crosses
     /// or touches itself counts every enclosed region once (nonzero winding rule), so a bow-tie
     /// measures the sum of its two loops rather than their difference.

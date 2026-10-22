@@ -954,6 +954,54 @@ struct AreaCalculatorTests {
             SIMD3<Float>(2, 0, 0),
         ]) == nil)
     }
+
+    @Test("clearance is the distance to the nearest line: positive inside, negative outside")
+    func clearanceInsideAndOutside() throws {
+        let sut = AreaCalculator()
+        let middle = try #require(sut.clearance(at: SIMD3<Float>(1, 0, 1), in: squareTwoByTwo))
+        let nearEdge = try #require(sut.clearance(at: SIMD3<Float>(0.25, 0, 1), in: squareTwoByTwo))
+        let outside = try #require(sut.clearance(at: SIMD3<Float>(3, 0, 1), in: squareTwoByTwo))
+
+        #expect(abs(middle - 1) < 0.001)
+        #expect(abs(nearEdge - 0.25) < 0.001)
+        #expect(abs(outside + 1) < 0.001)
+    }
+
+    @Test("clearance matches the largest inscribed circle's radius at its centre")
+    func clearanceAtInscribedCentre() throws {
+        let sut = AreaCalculator()
+        let lShape = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(4, 0, 0),
+            SIMD3<Float>(4, 0, 1),
+            SIMD3<Float>(1, 0, 1),
+            SIMD3<Float>(1, 0, 4),
+            SIMD3<Float>(0, 0, 4),
+        ]
+        let circle = try #require(sut.largestInscribedCircle(from: lShape))
+        let clearance = try #require(sut.clearance(at: circle.center, in: lShape))
+
+        #expect(abs(clearance - circle.radius) < 0.002)
+    }
+
+    @Test("clearance measures in the outline's plane, ignoring height above it")
+    func clearanceOffPlane() throws {
+        let sut = AreaCalculator()
+        let raised = try #require(sut.clearance(at: SIMD3<Float>(1, 0.5, 1), in: squareTwoByTwo))
+
+        #expect(abs(raised - 1) < 0.001)
+    }
+
+    @Test("clearance returns nil for too few or collinear points")
+    func clearanceDegenerate() {
+        let sut = AreaCalculator()
+        #expect(sut.clearance(at: .zero, in: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
+        #expect(sut.clearance(at: .zero, in: [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(2, 0, 0),
+        ]) == nil)
+    }
 }
 
 @Suite("HeightCalculator")

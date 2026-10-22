@@ -73,7 +73,9 @@ func poleOfInaccessibility(
     return (chosen.center, chosen.distance)
 }
 
-private func signedDistance(from point: SIMD2<Float>, to polygon: [SIMD2<Float>]) -> Float {
+/// Distance from `point` to the nearest segment of the closed outline `polygon`: positive inside
+/// (nonzero winding), negative outside.
+func signedDistance(from point: SIMD2<Float>, to polygon: [SIMD2<Float>]) -> Float {
     var nearest = Float.greatestFiniteMagnitude
     for i in polygon.indices {
         nearest = min(nearest, distance(from: point, toSegmentFrom: polygon[i], to: polygon[(i + 1) % polygon.count]))
