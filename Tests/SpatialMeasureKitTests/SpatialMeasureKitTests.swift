@@ -1439,6 +1439,24 @@ struct PolygonTriangulatorTests {
         #expect(isCounterClockwise(triangulation))
     }
 
+    @Test("A loop inside the outline, pinned at its crossing, leaves the rest of the outline filled")
+    func triangulationOfLoopPinnedInside() throws {
+        let sut = PolygonTriangulator()
+        let points = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(6, 0, 0),
+            SIMD3<Float>(6, 0, 6),
+            SIMD3<Float>(0, 0, 6),
+            SIMD3<Float>(4, 0, 2),
+            SIMD3<Float>(4, 0, 4),
+        ]
+        let triangulation = try #require(sut.triangulation(of: points))
+
+        #expect(abs(summedArea(triangulation.triangles, points: triangulation.vertices) - 27) < 0.01)
+        #expect(abs(areaCalculator.computeArea(from: points) - 27) < 0.01)
+        #expect(isCounterClockwise(triangulation))
+    }
+
     @Test("triangulation(of:) returns nil for too few or collinear points")
     func triangulationOfDegenerateInput() {
         let sut = PolygonTriangulator()

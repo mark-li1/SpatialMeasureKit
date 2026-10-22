@@ -116,12 +116,9 @@ public struct PolygonTriangulator {
 
             guard isConvex(previous, current, next) else { continue }
 
-            let containsOther = ring.indices.contains { j in
-                guard j != i,
-                      j != (i - 1 + ring.count) % ring.count,
-                      j != (i + 1) % ring.count
-                else { return false }
-                return isInsideTriangle(points[ring[j]], previous, current, next)
+            let corners = [ring[(i - 1 + ring.count) % ring.count], ring[i], ring[(i + 1) % ring.count]]
+            let containsOther = ring.contains { vertex in
+                !corners.contains(vertex) && isInsideTriangle(points[vertex], previous, current, next)
             }
 
             if !containsOther { return i }
