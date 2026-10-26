@@ -62,15 +62,12 @@ public struct AreaCalculator: Sendable {
     }
 
     /// Unit vector perpendicular to the polygon's best-fit plane, via Newell's method.
-    /// `nil` for fewer than three points or degenerate (collinear) input. Loops of a
-    /// self-crossing outline that turn in opposite directions cancel here; use
-    /// `PolygonTriangulator.triangulation(of:)` for a normal that matches its triangles.
+    /// `nil` for fewer than three points or degenerate (collinear) input. An outline that crosses
+    /// itself has loops turning both ways, so there only the plane is meaningful, not the sign —
+    /// the same normal `PolygonTriangulator.triangulation(of:)` returns.
     public func normal(from points: [SIMD3<Float>]) -> SIMD3<Float>? {
         guard points.count >= 3 else { return nil }
-        let normal = newellNormal(from: points)
-        let length = simd_length(normal)
-        guard length > .ulpOfOne else { return nil }
-        return normal / length
+        return planeNormal(of: points)
     }
 
     /// Area-weighted centroid of the polygon. `nil` for empty input. For an outline that crosses
@@ -94,18 +91,23 @@ public struct AreaCalculator: Sendable {
     /// `0` means the points are perfectly planar. A larger value means they don't all lie on
     /// one surface — e.g. the trace wandered across a corner, or raycast noise is unusually high.
     public func planarityError(from points: [SIMD3<Float>]) -> Float {
-        guard points.count >= 3 else { return 0 }
+        guard points.count >= 3, let normal = planeNormal(of: points) else { return 0 }
 
         let centroid = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
-        let normal = newellNormal(from: points)
-        let normalLength = simd_length(normal)
-        guard normalLength > .ulpOfOne else { return 0 }
-
-        let unitNormal = normal / normalLength
         return points.reduce(into: Float(0)) { worst, point in
-            let distance = abs(simd_dot(point - centroid, unitNormal))
+            let distance = abs(simd_dot(point - centroid, normal))
             worst = max(worst, distance)
         }
+    }
+
+    private func planeNormal(of points: [SIMD3<Float>]) -> SIMD3<Float>? {
+        if let arrangement = PolygonArrangement(crossingOutline: points) {
+            return arrangement.normal
+        }
+        let normal = newellNormal(from: points)
+        let length = simd_length(normal)
+        guard length > .ulpOfOne else { return nil }
+        return normal / length
     }
 
     private func weightedCentroid(
