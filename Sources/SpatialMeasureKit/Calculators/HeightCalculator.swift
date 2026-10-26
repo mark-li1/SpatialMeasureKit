@@ -3,7 +3,7 @@ import simd
 public struct HeightCalculator: Sendable {
     public init() {}
     
-    public func computeTopPoint(
+    public func topPoint(
         bottomPoint: SIMD3<Float>,
         cameraPosition: SIMD3<Float>,
         cameraForward: SIMD3<Float>

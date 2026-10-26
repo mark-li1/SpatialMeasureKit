@@ -11,7 +11,7 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(3, 4, 0)
 
-        #expect(sut.computeDistance(from: a, to: b) == 5)
+        #expect(sut.distance(from: a, to: b) == 5)
     }
 
     @Test("Computes 0 for identical points")
@@ -19,7 +19,7 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let a = SIMD3<Float>(0, 0, 0)
 
-        #expect(sut.computeDistance(from: a, to: a) == 0)
+        #expect(sut.distance(from: a, to: a) == 0)
     }
 
     @Test("Computes 5 for negative coordinates")
@@ -28,7 +28,7 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(-3, -4, 0)
 
-        #expect(sut.computeDistance(from: a, to: b) == 5)
+        #expect(sut.distance(from: a, to: b) == 5)
     }
 
     @Test("Computes correct distance for a non-perfect-square input")
@@ -37,29 +37,29 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(1, 1, 1)
 
-        let result = sut.computeDistance(from: a, to: b)
+        let result = sut.distance(from: a, to: b)
         #expect(abs(result - 1.7320508) < 0.0001)
     }
 
     @Test("Computes 0 for empty input")
     func lengthEmptyInput() {
         let sut = DistanceCalculator()
-        #expect(sut.computeLength(from: []) == 0)
+        #expect(sut.length(of: []) == 0)
     }
 
     @Test("Computes 0 for a single point")
     func lengthSinglePoint() {
         let sut = DistanceCalculator()
-        #expect(sut.computeLength(from: [SIMD3<Float>(1, 2, 3)]) == 0)
+        #expect(sut.length(of: [SIMD3<Float>(1, 2, 3)]) == 0)
     }
 
-    @Test("Two points agree exactly with computeDistance")
+    @Test("Two points agree exactly with distance(from:to:)")
     func lengthTwoPointsMatchesDistance() {
         let sut = DistanceCalculator()
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(3, 4, 0)
 
-        #expect(sut.computeLength(from: [a, b]) == sut.computeDistance(from: a, to: b))
+        #expect(sut.length(of: [a, b]) == sut.distance(from: a, to: b))
     }
 
     @Test("Sums consecutive segments across multiple points")
@@ -67,7 +67,7 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
 
-        #expect(abs(sut.computeLength(from: points) - 7) < 0.0001)
+        #expect(abs(sut.length(of: points) - 7) < 0.0001)
     }
 
     @Test("Treats the path as open: a unit square's four corners sum to 3, not 4")
@@ -80,7 +80,7 @@ struct DistanceCalculatorTests {
             SIMD3<Float>(0, 0, 1),
         ]
 
-        #expect(abs(sut.computeLength(from: points) - 3) < 0.0001)
+        #expect(abs(sut.length(of: points) - 3) < 0.0001)
     }
 
     @Test("Consecutive duplicate points contribute 0 to the length")
@@ -88,7 +88,7 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
 
-        #expect(abs(sut.computeLength(from: points) - 7) < 0.0001)
+        #expect(abs(sut.length(of: points) - 7) < 0.0001)
     }
 
     @Test("Collinear points sum to the end-to-end distance")
@@ -96,19 +96,19 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(4, 0, 0), SIMD3<Float>(5, 0, 0)]
 
-        #expect(abs(sut.computeLength(from: points) - 5) < 0.0001)
+        #expect(abs(sut.length(of: points) - 5) < 0.0001)
     }
 
     @Test("Length is unchanged far from the world origin")
     func lengthFarFromOrigin() {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
-        let baseline = sut.computeLength(from: points)
+        let baseline = sut.length(of: points)
 
         let offset = SIMD3<Float>(1000, 1000, 1000)
         let translated = points.map { $0 + offset }
 
-        #expect(abs(sut.computeLength(from: translated) - baseline) < 0.001)
+        #expect(abs(sut.length(of: translated) - baseline) < 0.001)
     }
 
     @Test("Length is unchanged when the point order is reversed")
@@ -116,19 +116,19 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
 
-        #expect(abs(sut.computeLength(from: points.reversed()) - sut.computeLength(from: points)) < 0.0001)
+        #expect(abs(sut.length(of: points.reversed()) - sut.length(of: points)) < 0.0001)
     }
 
     @Test("Computes 0 for empty input")
     func perimeterEmptyInput() {
         let sut = DistanceCalculator()
-        #expect(sut.computePerimeter(from: []) == 0)
+        #expect(sut.perimeter(of: []) == 0)
     }
 
     @Test("Computes 0 for a single point")
     func perimeterSinglePoint() {
         let sut = DistanceCalculator()
-        #expect(sut.computePerimeter(from: [SIMD3<Float>(1, 2, 3)]) == 0)
+        #expect(sut.perimeter(of: [SIMD3<Float>(1, 2, 3)]) == 0)
     }
 
     @Test("Falls back to the open length for two points, not a there-and-back distance")
@@ -137,7 +137,7 @@ struct DistanceCalculatorTests {
         let a = SIMD3<Float>(0, 0, 0)
         let b = SIMD3<Float>(3, 4, 0)
 
-        #expect(sut.computePerimeter(from: [a, b]) == sut.computeDistance(from: a, to: b))
+        #expect(sut.perimeter(of: [a, b]) == sut.distance(from: a, to: b))
     }
 
     @Test("Includes the closing segment: a unit square's four corners sum to 4, not 3")
@@ -150,8 +150,8 @@ struct DistanceCalculatorTests {
             SIMD3<Float>(0, 0, 1),
         ]
 
-        #expect(abs(sut.computePerimeter(from: points) - 4) < 0.0001)
-        #expect(abs(sut.computePerimeter(from: points) - sut.computeLength(from: points) - 1) < 0.0001)
+        #expect(abs(sut.perimeter(of: points) - 4) < 0.0001)
+        #expect(abs(sut.perimeter(of: points) - sut.length(of: points) - 1) < 0.0001)
     }
 
     @Test("Computes 12 for a 3-4-5 right triangle's perimeter")
@@ -159,19 +159,19 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
 
-        #expect(abs(sut.computePerimeter(from: points) - 12) < 0.0001)
+        #expect(abs(sut.perimeter(of: points) - 12) < 0.0001)
     }
 
     @Test("Perimeter is unchanged far from the world origin")
     func perimeterFarFromOrigin() {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
-        let baseline = sut.computePerimeter(from: points)
+        let baseline = sut.perimeter(of: points)
 
         let offset = SIMD3<Float>(1000, 1000, 1000)
         let translated = points.map { $0 + offset }
 
-        #expect(abs(sut.computePerimeter(from: translated) - baseline) < 0.001)
+        #expect(abs(sut.perimeter(of: translated) - baseline) < 0.001)
     }
 
     @Test("Perimeter is unchanged when the point order is reversed")
@@ -179,7 +179,7 @@ struct DistanceCalculatorTests {
         let sut = DistanceCalculator()
         let points = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 4, 0)]
 
-        #expect(abs(sut.computePerimeter(from: points.reversed()) - sut.computePerimeter(from: points)) < 0.0001)
+        #expect(abs(sut.perimeter(of: points.reversed()) - sut.perimeter(of: points)) < 0.0001)
     }
 }
 
@@ -192,7 +192,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(3, 0, 0)
         let c = SIMD3<Float>(3, 4, 0)
 
-        let result = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
+        let result = try #require(sut.angle(from: a, vertex: vertex, to: c))
         #expect(abs(result - 90) < 0.001)
     }
 
@@ -203,7 +203,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(3, 0, 0)
         let c = SIMD3<Float>(10, 0, 0)
 
-        let result = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
+        let result = try #require(sut.angle(from: a, vertex: vertex, to: c))
         #expect(abs(result - 180) < 0.001)
     }
 
@@ -214,7 +214,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(3, 0, 0)
         let c = SIMD3<Float>(-1, 0, 0)
 
-        let result = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
+        let result = try #require(sut.angle(from: a, vertex: vertex, to: c))
         #expect(abs(result - 0) < 0.001)
     }
 
@@ -225,7 +225,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(3, 0, 0)
         let c = SIMD3<Float>(0, 3, 0)
 
-        let result = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
+        let result = try #require(sut.angle(from: a, vertex: vertex, to: c))
         #expect(abs(result - 45) < 0.001)
     }
 
@@ -236,7 +236,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(0, 0, 0)
         let c = SIMD3<Float>(1, 1, 0)
 
-        let result = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
+        let result = try #require(sut.angle(from: a, vertex: vertex, to: c))
         #expect(abs(result - 135) < 0.001)
     }
 
@@ -247,7 +247,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(11, 20, 30)
         let c = SIMD3<Float>(11, 21, 30)
 
-        let result = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
+        let result = try #require(sut.angle(from: a, vertex: vertex, to: c))
         #expect(abs(result - 90) < 0.001)
     }
 
@@ -258,8 +258,8 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(3, 0, 0)
         let c = SIMD3<Float>(0, 3, 0)
 
-        let forward = try #require(sut.computeAngle(from: a, vertex: vertex, to: c))
-        let reversed = try #require(sut.computeAngle(from: c, vertex: vertex, to: a))
+        let forward = try #require(sut.angle(from: a, vertex: vertex, to: c))
+        let reversed = try #require(sut.angle(from: c, vertex: vertex, to: a))
         #expect(abs(forward - reversed) < 0.0001)
     }
 
@@ -269,7 +269,7 @@ struct AngleCalculatorTests {
         let vertex = SIMD3<Float>(0, 0, 0)
         let c = SIMD3<Float>(1, 0, 0)
 
-        #expect(sut.computeAngle(from: vertex, vertex: vertex, to: c) == nil)
+        #expect(sut.angle(from: vertex, vertex: vertex, to: c) == nil)
     }
 
     @Test("Returns nil when the 'to' point coincides with the vertex")
@@ -278,7 +278,7 @@ struct AngleCalculatorTests {
         let a = SIMD3<Float>(1, 0, 0)
         let vertex = SIMD3<Float>(0, 0, 0)
 
-        #expect(sut.computeAngle(from: a, vertex: vertex, to: vertex) == nil)
+        #expect(sut.angle(from: a, vertex: vertex, to: vertex) == nil)
     }
 }
 
@@ -287,61 +287,61 @@ struct AreaCalculatorTests {
     @Test("Computes 0 for empty input")
     func emptyInput() {
         let sut = AreaCalculator()
-        #expect(sut.computeArea(from: []) == 0)
+        #expect(sut.area(of: []) == 0)
     }
 
     @Test("Computes 0 for a single point")
     func onePoint() {
         let sut = AreaCalculator()
-        #expect(sut.computeArea(from: [SIMD3<Float>(1, 0, 0)]) == 0)
+        #expect(sut.area(of: [SIMD3<Float>(1, 0, 0)]) == 0)
     }
 
     @Test("Computes 0 for two points")
     func twoPoints() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 3, 0)]) - 0) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 3, 0)]) - 0) < 0.001)
     }
 
     @Test("Computes 6 for a 3-4 right triangle")
     func triangle() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
     }
 
     @Test("Computes 1 for a unit square")
     func square() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 0, 1), SIMD3<Float>(0, 0, 1)]) - 1) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 0, 1), SIMD3<Float>(0, 0, 1)]) - 1) < 0.001)
     }
 
     @Test("Computes 12 for a 3×4 rectangle")
     func rectangle() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4), SIMD3<Float>(0, 0, 4)]) - 12) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4), SIMD3<Float>(0, 0, 4)]) - 12) < 0.001)
     }
 
     @Test("Computes 0 for collinear points")
     func straightLine() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(0, 0, 3), SIMD3<Float>(0, 0, 4), SIMD3<Float>(0, 0, 5)])) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(0, 0, 3), SIMD3<Float>(0, 0, 4), SIMD3<Float>(0, 0, 5)])) < 0.001)
     }
 
     @Test("Area is unchanged when a corner point is duplicated")
     func duplicateCorner() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
     }
 
     @Test("Area is unchanged when an edge midpoint is duplicated")
     func duplicateMidEdge() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 2), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(3, 0, 0), SIMD3<Float>(3, 0, 2), SIMD3<Float>(3, 0, 4)]) - 6) < 0.001)
     }
 
     @Test("Computes 0 when non-adjacent points coincide")
     func duplicateNonAdjacentPoint() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(4, 0, 0), SIMD3<Float>(0, 0, 0), SIMD3<Float>(4, 0, 4)]) - 0) < 0.001)
+        #expect(abs(sut.area(of: [SIMD3<Float>(0, 0, 0),  SIMD3<Float>(4, 0, 0), SIMD3<Float>(0, 0, 0), SIMD3<Float>(4, 0, 4)]) - 0) < 0.001)
     }
 
     @Test("Computes 12 for a 3×4 rectangle traced on a vertical wall")
@@ -355,7 +355,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 4, 0),
             SIMD3<Float>(0, 4, 0),
         ]
-        #expect(abs(sut.computeArea(from: points) - 12) < 0.001)
+        #expect(abs(sut.area(of: points) - 12) < 0.001)
     }
 
     @Test("Computes 1 for a unit square tilted 45 degrees")
@@ -367,7 +367,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0.70710678, 0.70710678),
             SIMD3<Float>(0, 0.70710678, 0.70710678),
         ]
-        #expect(abs(sut.computeArea(from: points) - 1) < 0.001)
+        #expect(abs(sut.area(of: points) - 1) < 0.001)
     }
 
     @Test("Area is unchanged when the polygon is rotated in space")
@@ -379,12 +379,12 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        let baseline = sut.computeArea(from: points)
+        let baseline = sut.area(of: points)
 
         let rotation = simd_quatf(angle: 0.83, axis: simd_normalize(SIMD3<Float>(1, 2, 3)))
         let rotated = points.map { simd_act(rotation, $0) }
 
-        #expect(abs(sut.computeArea(from: rotated) - baseline) < 0.001)
+        #expect(abs(sut.area(of: rotated) - baseline) < 0.001)
     }
 
     @Test("Area is unchanged far from the world origin")
@@ -396,12 +396,12 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        let baseline = sut.computeArea(from: points)
+        let baseline = sut.area(of: points)
 
         let offset = SIMD3<Float>(1000, 1000, 1000)
         let translated = points.map { $0 + offset }
 
-        #expect(abs(sut.computeArea(from: translated) - baseline) < 0.001)
+        #expect(abs(sut.area(of: translated) - baseline) < 0.001)
     }
 
     @Test("Area is unchanged when winding order is reversed")
@@ -413,7 +413,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        #expect(abs(sut.computeArea(from: points.reversed()) - sut.computeArea(from: points)) < 0.001)
+        #expect(abs(sut.area(of: points.reversed()) - sut.area(of: points)) < 0.001)
     }
 
     @Test("Area stays within 1% of exact for a wall traced with small raycast noise")
@@ -426,7 +426,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 4, 0.009),
             SIMD3<Float>(0, 4, -0.004),
         ]
-        #expect(abs(sut.computeArea(from: points) - 12) / 12 < 0.01)
+        #expect(abs(sut.area(of: points) - 12) / 12 < 0.01)
     }
 
     @Test("planarityError is 0 for an exactly planar polygon")
@@ -438,7 +438,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        #expect(sut.planarityError(from: points) < 0.0001)
+        #expect(sut.planarityError(of: points) < 0.0001)
     }
 
     @Test("planarityError reflects a point pulled off the shared plane")
@@ -450,7 +450,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 1.0, 4),
         ]
-        #expect(sut.planarityError(from: points) > 0.15)
+        #expect(sut.planarityError(of: points) > 0.15)
     }
 
     @Test("normal points straight up for a floor-plane square")
@@ -462,7 +462,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 0),
             SIMD3<Float>(0, 0, 0),
         ]
-        let normal = try #require(sut.normal(from: points))
+        let normal = try #require(sut.normal(of: points))
         #expect(simd_distance(normal, SIMD3<Float>(0, 1, 0)) < 0.001)
     }
 
@@ -475,7 +475,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 1, 0),
             SIMD3<Float>(0, 1, 0),
         ]
-        let normal = try #require(sut.normal(from: points))
+        let normal = try #require(sut.normal(of: points))
         #expect(abs(normal.x) < 0.001)
         #expect(abs(normal.y) < 0.001)
         #expect(abs(abs(normal.z) - 1) < 0.001)
@@ -490,14 +490,14 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        let normal = try #require(sut.normal(from: points))
+        let normal = try #require(sut.normal(of: points))
         #expect(abs(simd_length(normal) - 1) < 0.0001)
     }
 
     @Test("normal is nil for fewer than three points")
     func normalNilForTooFewPoints() {
         let sut = AreaCalculator()
-        #expect(sut.normal(from: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
+        #expect(sut.normal(of: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
     }
 
     @Test("normal is nil for collinear points")
@@ -508,13 +508,13 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 0),
             SIMD3<Float>(2, 0, 0),
         ]
-        #expect(sut.normal(from: points) == nil)
+        #expect(sut.normal(of: points) == nil)
     }
 
     @Test("centroid is nil for empty input")
     func centroidNilForEmpty() {
         let sut = AreaCalculator()
-        #expect(sut.centroid(from: []) == nil)
+        #expect(sut.centroid(of: []) == nil)
     }
 
     @Test("centroid of a unit square is its exact center")
@@ -526,7 +526,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 1),
             SIMD3<Float>(0, 0, 1),
         ]
-        let centroid = try #require(sut.centroid(from: points))
+        let centroid = try #require(sut.centroid(of: points))
         #expect(simd_distance(centroid, SIMD3<Float>(0.5, 0, 0.5)) < 0.001)
     }
 
@@ -538,7 +538,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 0),
             SIMD3<Float>(3, 0, 4),
         ]
-        let centroid = try #require(sut.centroid(from: points))
+        let centroid = try #require(sut.centroid(of: points))
         let average = points.reduce(SIMD3<Float>.zero, +) / 3
         #expect(simd_distance(centroid, average) < 0.001)
     }
@@ -553,7 +553,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 1),
             SIMD3<Float>(0, 0, 1),
         ]
-        let centroid = try #require(sut.centroid(from: points))
+        let centroid = try #require(sut.centroid(of: points))
         #expect(simd_distance(centroid, SIMD3<Float>(0.5, 0, 0.5)) < 0.001)
 
         let plainAverage = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
@@ -571,7 +571,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(2, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        let centroid = try #require(sut.centroid(from: points))
+        let centroid = try #require(sut.centroid(of: points))
 
         let triangles = PolygonTriangulator().triangulate(points)
         #expect(!triangles.isEmpty)
@@ -600,7 +600,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 0),
             SIMD3<Float>(2, 0, 0),
         ]
-        let centroid = try #require(sut.centroid(from: points))
+        let centroid = try #require(sut.centroid(of: points))
         #expect(simd_distance(centroid, SIMD3<Float>(1, 0, 0)) < 0.001)
     }
 
@@ -613,10 +613,10 @@ struct AreaCalculatorTests {
             SIMD3<Float>(3, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        let baseline = try #require(sut.centroid(from: points))
+        let baseline = try #require(sut.centroid(of: points))
 
         let offset = SIMD3<Float>(10, 5, -7)
-        let translated = try #require(sut.centroid(from: points.map { $0 + offset }))
+        let translated = try #require(sut.centroid(of: points.map { $0 + offset }))
         #expect(simd_distance(translated, baseline + offset) < 0.001)
     }
 
@@ -654,26 +654,26 @@ struct AreaCalculatorTests {
     func bowTieArea() {
         let sut = AreaCalculator()
         #expect(simd_length(newellNormal(from: bowTie)) < 0.001)
-        #expect(abs(sut.computeArea(from: bowTie) - 2) < 0.001)
+        #expect(abs(sut.area(of: bowTie) - 2) < 0.001)
     }
 
     @Test("Bow-tie area doesn't depend on drawing direction")
     func bowTieReversed() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: bowTie.reversed()) - 2) < 0.001)
+        #expect(abs(sut.area(of: bowTie.reversed()) - 2) < 0.001)
     }
 
     @Test("Adds the loops of an uneven bow-tie: 1.125 + 0.125, not their 1.0 difference")
     func unevenBowTieArea() {
         let sut = AreaCalculator()
-        #expect(abs(sut.computeArea(from: unevenBowTie) - 1.25) < 0.001)
+        #expect(abs(sut.area(of: unevenBowTie) - 1.25) < 0.001)
     }
 
     @Test("Counts the middle of a 5-point star once, like its simple 10-point outline")
     func pentagramUnion() {
         let sut = AreaCalculator()
-        let crossed = sut.computeArea(from: pentagram(radius: 2))
-        let simple = sut.computeArea(from: starOutline(radius: 2))
+        let crossed = sut.area(of: pentagram(radius: 2))
+        let simple = sut.area(of: starOutline(radius: 2))
         #expect(abs(crossed - simple) < 0.01)
     }
 
@@ -686,7 +686,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 1),
             SIMD3<Float>(0, 0, 1),
         ]
-        #expect(abs(sut.computeArea(from: square + square) - 1) < 0.001)
+        #expect(abs(sut.area(of: square + square) - 1) < 0.001)
     }
 
     @Test("Two loops touching at one shared corner add up instead of cancelling")
@@ -700,7 +700,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(2, 0, 2),
             SIMD3<Float>(1, 0, 1),
         ]
-        #expect(abs(sut.computeArea(from: points) - 2) < 0.001)
+        #expect(abs(sut.area(of: points) - 2) < 0.001)
     }
 
     @Test("An outline that runs back along its first edge keeps the full area")
@@ -714,14 +714,14 @@ struct AreaCalculatorTests {
             SIMD3<Float>(0, 0, 0),
             SIMD3<Float>(1, 0, 0),
         ]
-        #expect(abs(sut.computeArea(from: points) - 4) < 0.001)
+        #expect(abs(sut.area(of: points) - 4) < 0.001)
     }
 
     @Test("Crossed outline area is unchanged far from the world origin")
     func crossedFarFromOrigin() {
         let sut = AreaCalculator()
         let offset = SIMD3<Float>(1000, 1000, 1000)
-        #expect(abs(sut.computeArea(from: bowTie.map { $0 + offset }) - 2) < 0.01)
+        #expect(abs(sut.area(of: bowTie.map { $0 + offset }) - 2) < 0.01)
     }
 
     @Test("Small height noise doesn't change a crossed outline's area")
@@ -729,13 +729,13 @@ struct AreaCalculatorTests {
         let sut = AreaCalculator()
         let noise: [Float] = [0.004, -0.003, 0.005, -0.002]
         let noisy = zip(bowTie, noise).map { point, dy in point + SIMD3<Float>(0, dy, 0) }
-        #expect(abs(sut.computeArea(from: noisy) - 2) < 0.02)
+        #expect(abs(sut.area(of: noisy) - 2) < 0.02)
     }
 
     @Test("Centroid of a crossed outline weights each loop by its area")
     func crossedCentroid() throws {
         let sut = AreaCalculator()
-        let centroid = try #require(sut.centroid(from: unevenBowTie))
+        let centroid = try #require(sut.centroid(of: unevenBowTie))
         #expect(simd_distance(centroid, SIMD3<Float>(1.18333, 0, 0.31667)) < 0.001)
     }
 
@@ -792,7 +792,7 @@ struct AreaCalculatorTests {
     @Test("A 2×2 square's largest circle sits in the middle with radius 1")
     func inscribedCircleSquare() throws {
         let sut = AreaCalculator()
-        let circle = try #require(sut.largestInscribedCircle(from: squareTwoByTwo))
+        let circle = try #require(sut.largestInscribedCircle(of: squareTwoByTwo))
 
         #expect(simd_distance(circle.center, SIMD3<Float>(1, 0, 1)) < 0.01)
         #expect(abs(circle.radius - 1) < 0.002)
@@ -807,7 +807,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(4, 0, 2),
             SIMD3<Float>(0, 0, 2),
         ]
-        let circle = try #require(sut.largestInscribedCircle(from: rectangle))
+        let circle = try #require(sut.largestInscribedCircle(of: rectangle))
 
         #expect(abs(circle.radius - 1) < 0.002)
         #expect(abs(circle.center.z - 1) < 0.01)
@@ -823,7 +823,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(4, 0, 2),
             SIMD3<Float>(0, 0, 2),
         ]
-        let circle = try #require(sut.largestInscribedCircle(from: rectangle))
+        let circle = try #require(sut.largestInscribedCircle(of: rectangle))
 
         #expect(simd_distance(circle.center, SIMD3<Float>(2, 0, 1)) < 0.01)
     }
@@ -837,7 +837,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(4, 0, 2.001),
             SIMD3<Float>(0, 0, 2),
         ]
-        let circle = try #require(sut.largestInscribedCircle(from: nudged))
+        let circle = try #require(sut.largestInscribedCircle(of: nudged))
 
         #expect(simd_distance(circle.center, SIMD3<Float>(2, 0, 1)) < 0.02)
     }
@@ -854,7 +854,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(2, 0, 0),
         ]
         let expected = Float(2).squareRoot() / (1 + Float(2).squareRoot())
-        let circle = try #require(sut.largestInscribedCircle(from: lShape))
+        let circle = try #require(sut.largestInscribedCircle(of: lShape))
 
         #expect(abs(circle.radius - expected) < 0.003)
         #expect(simd_distance(circle.center, SIMD3<Float>(expected, 0, expected)) < 0.01)
@@ -863,8 +863,8 @@ struct AreaCalculatorTests {
     @Test("A U-shape whose centroid falls outside it still gets a centre inside")
     func inscribedCircleUShape() throws {
         let sut = AreaCalculator()
-        let centroid = try #require(sut.centroid(from: uShape))
-        let circle = try #require(sut.largestInscribedCircle(from: uShape))
+        let centroid = try #require(sut.centroid(of: uShape))
+        let circle = try #require(sut.largestInscribedCircle(of: uShape))
 
         #expect(!isInside(centroid, outline: uShape))
         #expect(isInside(circle.center, outline: uShape))
@@ -875,8 +875,8 @@ struct AreaCalculatorTests {
     @Test("Drawing direction doesn't change the largest circle")
     func inscribedCircleReversed() throws {
         let sut = AreaCalculator()
-        let forward = try #require(sut.largestInscribedCircle(from: uShape))
-        let reversed = try #require(sut.largestInscribedCircle(from: uShape.reversed()))
+        let forward = try #require(sut.largestInscribedCircle(of: uShape))
+        let reversed = try #require(sut.largestInscribedCircle(of: uShape.reversed()))
 
         #expect(abs(forward.radius - reversed.radius) < 0.002)
     }
@@ -884,7 +884,7 @@ struct AreaCalculatorTests {
     @Test("A bow-tie's largest circle sits inside one loop, not on the crossing")
     func inscribedCircleBowTie() throws {
         let sut = AreaCalculator()
-        let circle = try #require(sut.largestInscribedCircle(from: bowTie))
+        let circle = try #require(sut.largestInscribedCircle(of: bowTie))
 
         #expect(abs(circle.radius - 1 / (1 + Float(2).squareRoot())) < 0.003)
         #expect(simd_distance(circle.center, SIMD3<Float>(1, 0, 1)) > 0.3)
@@ -894,7 +894,7 @@ struct AreaCalculatorTests {
     @Test("An uneven bow-tie's largest circle goes into the bigger loop")
     func inscribedCircleUnevenBowTie() throws {
         let sut = AreaCalculator()
-        let circle = try #require(sut.largestInscribedCircle(from: unevenBowTie))
+        let circle = try #require(sut.largestInscribedCircle(of: unevenBowTie))
 
         #expect(circle.center.z < 0.75)
         #expect(abs(circle.radius - 0.3498) < 0.003)
@@ -904,7 +904,7 @@ struct AreaCalculatorTests {
     func inscribedCirclePentagram() throws {
         let sut = AreaCalculator()
         let star = pentagram(radius: 2)
-        let circle = try #require(sut.largestInscribedCircle(from: star))
+        let circle = try #require(sut.largestInscribedCircle(of: star))
 
         #expect(simd_distance(circle.center, .zero) < 0.01)
         #expect(abs(circle.radius - 2 * 0.381966 * 0.809017) < 0.003)
@@ -920,7 +920,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(2, 2, 0),
             SIMD3<Float>(0, 2, 0),
         ]
-        let circle = try #require(sut.largestInscribedCircle(from: wall))
+        let circle = try #require(sut.largestInscribedCircle(of: wall))
 
         #expect(simd_distance(circle.center, SIMD3<Float>(1, 1, 0)) < 0.01)
         #expect(abs(circle.radius - 1) < 0.002)
@@ -930,7 +930,7 @@ struct AreaCalculatorTests {
     func inscribedCircleFarFromOrigin() throws {
         let sut = AreaCalculator()
         let offset = SIMD3<Float>(1000, 1000, 1000)
-        let circle = try #require(sut.largestInscribedCircle(from: squareTwoByTwo.map { $0 + offset }))
+        let circle = try #require(sut.largestInscribedCircle(of: squareTwoByTwo.map { $0 + offset }))
 
         #expect(simd_distance(circle.center, SIMD3<Float>(1, 0, 1) + offset) < 0.01)
         #expect(abs(circle.radius - 1) < 0.01)
@@ -939,7 +939,7 @@ struct AreaCalculatorTests {
     @Test("A coarser precision still lands within that precision")
     func inscribedCircleCoarsePrecision() throws {
         let sut = AreaCalculator()
-        let circle = try #require(sut.largestInscribedCircle(from: squareTwoByTwo, precision: 0.1))
+        let circle = try #require(sut.largestInscribedCircle(of: squareTwoByTwo, precision: 0.1))
 
         #expect(abs(circle.radius - 1) <= 0.1)
     }
@@ -947,8 +947,8 @@ struct AreaCalculatorTests {
     @Test("largestInscribedCircle returns nil for too few or collinear points")
     func inscribedCircleDegenerate() {
         let sut = AreaCalculator()
-        #expect(sut.largestInscribedCircle(from: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
-        #expect(sut.largestInscribedCircle(from: [
+        #expect(sut.largestInscribedCircle(of: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0)]) == nil)
+        #expect(sut.largestInscribedCircle(of: [
             SIMD3<Float>(0, 0, 0),
             SIMD3<Float>(1, 0, 0),
             SIMD3<Float>(2, 0, 0),
@@ -978,7 +978,7 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 4),
             SIMD3<Float>(0, 0, 4),
         ]
-        let circle = try #require(sut.largestInscribedCircle(from: lShape))
+        let circle = try #require(sut.largestInscribedCircle(of: lShape))
         let clearance = try #require(sut.clearance(at: circle.center, in: lShape))
 
         #expect(abs(clearance - circle.radius) < 0.002)
@@ -1018,7 +1018,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(0, 4, 0)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        let result = try #require(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
         #expect(abs(result.x - 0) < 0.001)
         #expect(abs(result.y - 4) < 0.001)
         #expect(abs(result.z - 0) < 0.001)
@@ -1032,7 +1032,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(0, 0.01, 0)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        let result = try #require(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
         #expect(abs(result.y - 0.01) < 0.001)
     }
 
@@ -1044,7 +1044,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(0, 20, 0)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        let result = try #require(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
         #expect(abs(result.y - 20) < 0.01)
     }
 
@@ -1055,7 +1055,7 @@ struct HeightCalculatorTests {
         let cameraPosition = SIMD3<Float>(5, 0, 0)
         let cameraForward = SIMD3<Float>(0, 1, 0)
 
-        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
+        #expect(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
     }
 
     @Test("Returns nil when aiming below the base point")
@@ -1066,7 +1066,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(0, -5, 0)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
+        #expect(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
     }
 
     @Test("Returns nil when aiming exactly at the base point")
@@ -1077,7 +1077,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(0, 0, 0)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
+        #expect(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
     }
 
     @Test("Returns nil when cameraForward is a zero vector")
@@ -1087,7 +1087,7 @@ struct HeightCalculatorTests {
         let cameraPosition = SIMD3<Float>(5, 0, 0)
         let cameraForward = simd_normalize(SIMD3<Float>(0, 0, 0))
 
-        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
+        #expect(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
     }
 
     @Test("Returns nil when the camera coincides with the bottom point")
@@ -1098,7 +1098,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(0, 0, 0)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        #expect(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
+        #expect(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward) == nil)
     }
 
     @Test("Preserves bottomPoint's x/z coordinates in the result")
@@ -1109,7 +1109,7 @@ struct HeightCalculatorTests {
         let aimPoint = SIMD3<Float>(7, 6, -3)
         let cameraForward = simd_normalize(aimPoint - cameraPosition)
 
-        let result = try #require(sut.computeTopPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
+        let result = try #require(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: cameraForward))
         #expect(result.x == bottomPoint.x)
         #expect(result.z == bottomPoint.z)
         #expect(abs(result.y - 6) < 0.001)
@@ -1127,7 +1127,7 @@ struct PointSnapperTests {
         SIMD3(distance * cos(theta), distance * sin(theta), 0)
     }
 
-    @Test("Snaps to a point just inside grabAngle")
+    @Test("Snaps to a point just inside grabDegrees")
     func snapsJustInsideGrabAngle() {
         let sut = PointSnapper()
         let point = offAxisPoint(angle: 0.02, distance: 5)
@@ -1137,7 +1137,7 @@ struct PointSnapperTests {
         #expect(result == point)
     }
 
-    @Test("Does not snap to a point just outside grabAngle")
+    @Test("Does not snap to a point just outside grabDegrees")
     func ignoresPointJustOutsideGrabAngle() {
         let sut = PointSnapper()
         let point = offAxisPoint(angle: 0.05, distance: 5)
@@ -1186,7 +1186,7 @@ struct PointSnapperTests {
         #expect(result == nil)
     }
 
-    @Test("Holds the lock past grabAngle but releases past releaseAngle")
+    @Test("Holds the lock past grabDegrees but releases past releaseDegrees")
     func hysteresisHoldsThenReleases() {
         let sut = PointSnapper()
         let point = offAxisPoint(angle: 0, distance: 10)
@@ -1314,14 +1314,14 @@ struct PolygonTriangulatorTests {
             SIMD3<Float>(0, 0, 4),
         ]
         let triangles = sut.triangulate(points)
-        #expect(abs(summedArea(triangles, points: points) - areaCalculator.computeArea(from: points)) < 0.001)
+        #expect(abs(summedArea(triangles, points: points) - areaCalculator.area(of: points)) < 0.001)
     }
 
     @Test("Triangle areas sum to the polygon's area for a concave L-shape")
     func areaSumConcaveLShape() {
         let sut = PolygonTriangulator()
         let triangles = sut.triangulate(lShape)
-        #expect(abs(summedArea(triangles, points: lShape) - areaCalculator.computeArea(from: lShape)) < 0.001)
+        #expect(abs(summedArea(triangles, points: lShape) - areaCalculator.area(of: lShape)) < 0.001)
     }
 
     @Test("Triangle areas sum to the polygon's area for a concave star")
@@ -1329,7 +1329,7 @@ struct PolygonTriangulatorTests {
         let sut = PolygonTriangulator()
         let points = starPoints()
         let triangles = sut.triangulate(points)
-        #expect(abs(summedArea(triangles, points: points) - areaCalculator.computeArea(from: points)) < 0.01)
+        #expect(abs(summedArea(triangles, points: points) - areaCalculator.area(of: points)) < 0.01)
     }
 
     @Test("Winding order doesn't change the total triangulated area")
@@ -1375,7 +1375,7 @@ struct PolygonTriangulatorTests {
         let triangles = sut.triangulate(points)
 
         #expect(triangles.count <= points.count - 2)
-        #expect(abs(summedArea(triangles, points: points) - areaCalculator.computeArea(from: points)) < 0.001)
+        #expect(abs(summedArea(triangles, points: points) - areaCalculator.area(of: points)) < 0.001)
     }
 
     @Test("A duplicated point next to a reflex vertex still covers the whole polygon")
@@ -1454,14 +1454,14 @@ struct PolygonTriangulatorTests {
         #expect(isCounterClockwise(triangulation))
     }
 
-    @Test("Crossed triangulation covers exactly computeArea, middle of the star included")
+    @Test("Crossed triangulation covers exactly area(of:), middle of the star included")
     func triangulationOfPentagram() throws {
         let sut = PolygonTriangulator()
         let star = pentagram(radius: 2)
         let triangulation = try #require(sut.triangulation(of: star))
         let covered = summedArea(triangulation.triangles, points: triangulation.vertices)
 
-        #expect(abs(covered - areaCalculator.computeArea(from: star)) < 0.01)
+        #expect(abs(covered - areaCalculator.area(of: star)) < 0.01)
         #expect(isCounterClockwise(triangulation))
         let coversMiddle = triangulation.triangles.contains { triangle in
             contains(.zero, polygon: [triangle.a, triangle.b, triangle.c].map { triangulation.vertices[$0] })
@@ -1483,7 +1483,7 @@ struct PolygonTriangulatorTests {
 
         #expect(triangulation.vertices == points)
         #expect(abs(summedArea(triangulation.triangles, points: triangulation.vertices) - 4) < 0.001)
-        #expect(abs(areaCalculator.computeArea(from: points) - 4) < 0.001)
+        #expect(abs(areaCalculator.area(of: points) - 4) < 0.001)
         #expect(isCounterClockwise(triangulation))
     }
 
@@ -1501,7 +1501,7 @@ struct PolygonTriangulatorTests {
         let triangulation = try #require(sut.triangulation(of: points))
 
         #expect(abs(summedArea(triangulation.triangles, points: triangulation.vertices) - 27) < 0.01)
-        #expect(abs(areaCalculator.computeArea(from: points) - 27) < 0.01)
+        #expect(abs(areaCalculator.area(of: points) - 27) < 0.01)
         #expect(isCounterClockwise(triangulation))
     }
 
@@ -1803,7 +1803,7 @@ struct LevelCalculatorTests {
     @Test("Computes 0° with no direction when lying face-up")
     func faceUpIsLevel() throws {
         let sut = LevelCalculator()
-        let result = try #require(sut.computeTilt(deviceUp: SIMD3<Float>(0, 0, 1)))
+        let result = try #require(sut.tilt(deviceUp: SIMD3<Float>(0, 0, 1)))
 
         #expect(abs(result.degrees - 0) < 0.001)
         #expect(result.direction == nil)
@@ -1812,7 +1812,7 @@ struct LevelCalculatorTests {
     @Test("Computes 90° pointing right when the device is on its right edge")
     func onItsSide() throws {
         let sut = LevelCalculator()
-        let result = try #require(sut.computeTilt(deviceUp: SIMD3<Float>(1, 0, 0)))
+        let result = try #require(sut.tilt(deviceUp: SIMD3<Float>(1, 0, 0)))
 
         #expect(abs(result.degrees - 90) < 0.001)
         let direction = try #require(result.direction)
@@ -1823,7 +1823,7 @@ struct LevelCalculatorTests {
     @Test("Computes 180° when upside down")
     func upsideDown() throws {
         let sut = LevelCalculator()
-        let result = try #require(sut.computeTilt(deviceUp: SIMD3<Float>(0, 0, -1)))
+        let result = try #require(sut.tilt(deviceUp: SIMD3<Float>(0, 0, -1)))
 
         #expect(abs(result.degrees - 180) < 0.001)
     }
@@ -1834,7 +1834,7 @@ struct LevelCalculatorTests {
         let radians: Float = 10 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), 0, cos(radians))
 
-        let result = try #require(sut.computeTilt(deviceUp: deviceUp))
+        let result = try #require(sut.tilt(deviceUp: deviceUp))
 
         #expect(abs(result.degrees - 10) < 0.001)
         let direction = try #require(result.direction)
@@ -1848,7 +1848,7 @@ struct LevelCalculatorTests {
         let radians: Float = 10 * .pi / 180
         let deviceUp = SIMD3<Float>(0, sin(radians), cos(radians))
 
-        let result = try #require(sut.computeTilt(deviceUp: deviceUp))
+        let result = try #require(sut.tilt(deviceUp: deviceUp))
 
         #expect(abs(result.degrees - 10) < 0.001)
         let direction = try #require(result.direction)
@@ -1862,7 +1862,7 @@ struct LevelCalculatorTests {
         let radians: Float = 0.05 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), 0, cos(radians))
 
-        let result = try #require(sut.computeTilt(deviceUp: deviceUp))
+        let result = try #require(sut.tilt(deviceUp: deviceUp))
 
         #expect(abs(result.degrees - 0.05) < 0.005)
     }
@@ -1873,8 +1873,8 @@ struct LevelCalculatorTests {
         let normalised = SIMD3<Float>(1, 0, 0)
         let scaled = normalised * 7
 
-        let a = try #require(sut.computeTilt(deviceUp: normalised))
-        let b = try #require(sut.computeTilt(deviceUp: scaled))
+        let a = try #require(sut.tilt(deviceUp: normalised))
+        let b = try #require(sut.tilt(deviceUp: scaled))
 
         #expect(abs(a.degrees - b.degrees) < 0.0001)
     }
@@ -1886,8 +1886,8 @@ struct LevelCalculatorTests {
         let reference = SIMD3<Float>(0, 0, 1)
         let rotation = simd_quatf(angle: 1.1, axis: simd_normalize(SIMD3<Float>(1, 1, 1)))
 
-        let unrotated = try #require(sut.computeTilt(deviceUp: deviceUp, relativeTo: reference))
-        let rotated = try #require(sut.computeTilt(deviceUp: rotation.act(deviceUp), relativeTo: rotation.act(reference)))
+        let unrotated = try #require(sut.tilt(deviceUp: deviceUp, relativeTo: reference))
+        let rotated = try #require(sut.tilt(deviceUp: rotation.act(deviceUp), relativeTo: rotation.act(reference)))
 
         #expect(abs(unrotated.degrees - rotated.degrees) < 0.001)
     }
@@ -1897,7 +1897,7 @@ struct LevelCalculatorTests {
         let sut = LevelCalculator()
         let deviceUp = SIMD3<Float>(0.3, 0.4, 0.8)
 
-        let result = try #require(sut.computeTilt(deviceUp: deviceUp, relativeTo: deviceUp))
+        let result = try #require(sut.tilt(deviceUp: deviceUp, relativeTo: deviceUp))
 
         #expect(abs(result.degrees - 0) < 0.001)
     }
@@ -1910,7 +1910,7 @@ struct LevelCalculatorTests {
             return SIMD3<Float>(sin(radians), 0, cos(radians))
         }
 
-        let result = try #require(sut.computeTilt(deviceUp: upAt(15), relativeTo: upAt(10)))
+        let result = try #require(sut.tilt(deviceUp: upAt(15), relativeTo: upAt(10)))
 
         #expect(abs(result.degrees - 5) < 0.001)
     }
@@ -1918,25 +1918,25 @@ struct LevelCalculatorTests {
     @Test("Returns nil for a zero-length deviceUp")
     func zeroDeviceUp() {
         let sut = LevelCalculator()
-        #expect(sut.computeTilt(deviceUp: .zero) == nil)
+        #expect(sut.tilt(deviceUp: .zero) == nil)
     }
 
     @Test("Returns nil for a zero-length reference")
     func zeroReference() {
         let sut = LevelCalculator()
-        #expect(sut.computeTilt(deviceUp: SIMD3<Float>(0, 0, 1), relativeTo: .zero) == nil)
+        #expect(sut.tilt(deviceUp: SIMD3<Float>(0, 0, 1), relativeTo: .zero) == nil)
     }
 
     @Test("Returns nil when the reference points opposite the screen normal")
     func antiparallelReference() {
         let sut = LevelCalculator()
-        #expect(sut.computeTilt(deviceUp: SIMD3<Float>(0, 0, 1), relativeTo: SIMD3<Float>(0, 0, -1)) == nil)
+        #expect(sut.tilt(deviceUp: SIMD3<Float>(0, 0, 1), relativeTo: SIMD3<Float>(0, 0, -1)) == nil)
     }
 
     @Test("Computes 0° when plumb (deviceUp aligned with the screen's own up edge)")
     func plumbIsZeroRoll() throws {
         let sut = LevelCalculator()
-        let result = try #require(sut.computeRoll(deviceUp: SIMD3<Float>(0, 1, 0)))
+        let result = try #require(sut.roll(deviceUp: SIMD3<Float>(0, 1, 0)))
         #expect(abs(result.degrees - 0) < 0.001)
     }
 
@@ -1946,7 +1946,7 @@ struct LevelCalculatorTests {
         let radians: Float = 30 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp))
+        let result = try #require(sut.roll(deviceUp: deviceUp))
         #expect(abs(result.degrees - 30) < 0.001)
     }
 
@@ -1956,21 +1956,21 @@ struct LevelCalculatorTests {
         let radians: Float = -30 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp))
+        let result = try #require(sut.roll(deviceUp: deviceUp))
         #expect(abs(result.degrees - (-30)) < 0.001)
     }
 
     @Test("Returns nil when the device is flat, not upright (deviceUp along the screen normal)")
     func flatDeviceHasNoRoll() {
         let sut = LevelCalculator()
-        #expect(sut.computeRoll(deviceUp: SIMD3<Float>(0, 0, 1)) == nil)
+        #expect(sut.roll(deviceUp: SIMD3<Float>(0, 0, 1)) == nil)
     }
 
     @Test("The z component never affects degrees — leaning toward the viewer doesn't change roll")
     func ignoresLean() throws {
         let sut = LevelCalculator()
-        let flat = try #require(sut.computeRoll(deviceUp: SIMD3<Float>(0.5, 0.5, 0)))
-        let leaning = try #require(sut.computeRoll(deviceUp: SIMD3<Float>(0.5, 0.5, 10)))
+        let flat = try #require(sut.roll(deviceUp: SIMD3<Float>(0.5, 0.5, 0)))
+        let leaning = try #require(sut.roll(deviceUp: SIMD3<Float>(0.5, 0.5, 10)))
         #expect(abs(flat.degrees - leaning.degrees) < 0.001)
     }
 
@@ -1980,7 +1980,7 @@ struct LevelCalculatorTests {
         let radians: Float = 35 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 30))
+        let result = try #require(sut.roll(deviceUp: deviceUp, relativeTo: 30))
         #expect(abs(result.degrees - 5) < 0.001)
     }
 
@@ -1990,7 +1990,7 @@ struct LevelCalculatorTests {
         let radians: Float = -170 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 170))
+        let result = try #require(sut.roll(deviceUp: deviceUp, relativeTo: 170))
         #expect(abs(result.degrees - 20) < 0.01)
     }
 
@@ -2000,7 +2000,7 @@ struct LevelCalculatorTests {
         let radians: Float = 50 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 30))
+        let result = try #require(sut.roll(deviceUp: deviceUp, relativeTo: 30))
         #expect(abs(result.degrees - 20) < 0.01)
     }
 
@@ -2010,8 +2010,8 @@ struct LevelCalculatorTests {
         let radians: Float = 140 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let snapped = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 30))
-        let continuous = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 480))
+        let snapped = try #require(sut.roll(deviceUp: deviceUp, relativeTo: 30))
+        let continuous = try #require(sut.roll(deviceUp: deviceUp, relativeTo: 480))
         #expect(abs(snapped.degrees - 20) < 0.01)
         #expect(abs(continuous.degrees - 20) < 0.01)
     }
@@ -2021,7 +2021,7 @@ struct LevelCalculatorTests {
         let sut = LevelCalculator()
         // deviceUp aligned with the screen's right edge, not its top — e.g. resting the phone's
         // side edge against a door frame and holding it plumb that way.
-        let result = try #require(sut.computeRoll(deviceUp: SIMD3<Float>(1, 0, 0)))
+        let result = try #require(sut.roll(deviceUp: SIMD3<Float>(1, 0, 0)))
         #expect(abs(result.degrees - 0) < 0.001)
     }
 
@@ -2030,7 +2030,7 @@ struct LevelCalculatorTests {
         let sut = LevelCalculator()
         let radians: Float = 44 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp))
+        let result = try #require(sut.roll(deviceUp: deviceUp))
         #expect(abs(result.degrees - 44) < 0.01)
     }
 
@@ -2039,7 +2039,7 @@ struct LevelCalculatorTests {
         let sut = LevelCalculator()
         let radians: Float = 46 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp))
+        let result = try #require(sut.roll(deviceUp: deviceUp))
         #expect(abs(result.degrees - (-44)) < 0.01)
     }
 
@@ -2049,8 +2049,8 @@ struct LevelCalculatorTests {
         let normalised = SIMD3<Float>(0.6, 0.8, 0)
         let scaled = normalised * 5
 
-        let a = try #require(sut.computeRoll(deviceUp: normalised))
-        let b = try #require(sut.computeRoll(deviceUp: scaled))
+        let a = try #require(sut.roll(deviceUp: normalised))
+        let b = try #require(sut.roll(deviceUp: scaled))
         #expect(abs(a.degrees - b.degrees) < 0.0001)
         #expect(simd_distance(a.direction, b.direction) < 0.0001)
     }
@@ -2063,7 +2063,7 @@ struct LevelCalculatorTests {
         let radians: Float = 20 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let result = try #require(sut.computeRoll(deviceUp: deviceUp))
+        let result = try #require(sut.roll(deviceUp: deviceUp))
         #expect(abs(result.direction.x - sin(radians)) < 0.001)
         #expect(abs(result.direction.y - cos(radians)) < 0.001)
     }
@@ -2074,8 +2074,8 @@ struct LevelCalculatorTests {
         let radians: Float = 35 * .pi / 180
         let deviceUp = SIMD3<Float>(sin(radians), cos(radians), 0)
 
-        let absolute = try #require(sut.computeRoll(deviceUp: deviceUp))
-        let relative = try #require(sut.computeRoll(deviceUp: deviceUp, relativeTo: 30))
+        let absolute = try #require(sut.roll(deviceUp: deviceUp))
+        let relative = try #require(sut.roll(deviceUp: deviceUp, relativeTo: 30))
 
         #expect(simd_distance(absolute.direction, relative.direction) < 0.0001)
         #expect(abs(absolute.degrees - relative.degrees) > 0.001) // degrees DID change

@@ -46,7 +46,7 @@ public struct LevelCalculator: Sendable {
     ///   against true horizontal.
     /// - Returns: `nil` when either vector is zero-length, or when the reference points
     ///   opposite the screen normal (the rotation between them is undefined).
-    public func computeTilt(deviceUp: SIMD3<Float>, relativeTo reference: SIMD3<Float>? = nil) -> Tilt? {
+    public func tilt(deviceUp: SIMD3<Float>, relativeTo reference: SIMD3<Float>? = nil) -> Tilt? {
         let upLength = simd_length(deviceUp)
         guard upLength > .ulpOfOne else { return nil }
         let up = deviceUp / upLength
@@ -79,15 +79,15 @@ public struct LevelCalculator: Sendable {
     /// Signed rotation around the screen-normal axis, relative to whichever of the device's four
     /// physical edges (top/right/bottom/left) is currently closest to true vertical — not always
     /// the screen's own top edge. Only meaningful when the device is held close to upright; see
-    /// `computeTilt` for the complementary "is it flat" case.
-    /// - deviceUp: same input as `computeTilt`. Only x/y are used — deliberately ignores lean
+    /// `tilt(deviceUp:relativeTo:)` for the complementary "is it flat" case.
+    /// - deviceUp: same input as `tilt(deviceUp:relativeTo:)`. Only x/y are used — deliberately ignores lean
     ///   toward/away from the viewer, since that doesn't affect whether an edge is plumb.
     /// - reference: the roll (degrees) to measure relative to, e.g. the device's angle when the
     ///   user locked it. Only its value modulo 90° matters, so a previous `degrees` and a
     ///   continuous angle both work. `nil` measures against true vertical.
     /// - Returns: `nil` when x and y are both negligible — deviceUp points nearly straight through
     ///   the screen, meaning the device is flat, not upright, and roll is undefined.
-    public func computeRoll(deviceUp: SIMD3<Float>, relativeTo reference: Float? = nil) -> Roll? {
+    public func roll(deviceUp: SIMD3<Float>, relativeTo reference: Float? = nil) -> Roll? {
         let horizontal = hypot(deviceUp.x, deviceUp.y)
         guard horizontal > .ulpOfOne else { return nil }
         let direction = SIMD2(deviceUp.x, deviceUp.y) / horizontal

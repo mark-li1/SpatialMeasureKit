@@ -30,7 +30,7 @@ public struct PolygonTriangulator: Sendable {
 
     /// Triangles covering every region the outline `points` encloses, including outlines that
     /// cross or touch themselves: each enclosed region is covered once
-    /// (nonzero winding rule), matching `AreaCalculator.computeArea(from:)`. `nil` for fewer than
+    /// (nonzero winding rule), matching `AreaCalculator.area(of:)`. `nil` for fewer than
     /// three points or degenerate (collinear) input.
     public func triangulation(of points: [SIMD3<Float>]) -> Triangulation? {
         if let arrangement = PolygonArrangement(crossingOutline: points) {
