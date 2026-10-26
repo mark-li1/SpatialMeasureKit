@@ -1,6 +1,6 @@
 import simd
 
-public struct HeightCalculator {
+public struct HeightCalculator: Sendable {
     public init() {}
     
     public func computeTopPoint(

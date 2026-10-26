@@ -37,7 +37,7 @@ public struct Roll: Equatable, Sendable {
     }
 }
 
-public struct LevelCalculator {
+public struct LevelCalculator: Sendable {
     public init() {}
 
     /// - deviceUp: the world's up axis expressed in the device's own axes. A device lying

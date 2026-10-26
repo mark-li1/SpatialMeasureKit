@@ -1,6 +1,6 @@
 import simd
 
-public struct DistanceCalculator {
+public struct DistanceCalculator: Sendable {
     public init() {}
 
     /// Straight-line distance between two points, in meters.

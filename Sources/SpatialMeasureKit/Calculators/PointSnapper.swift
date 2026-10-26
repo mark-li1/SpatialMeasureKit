@@ -1,6 +1,6 @@
 import simd
 
-public struct PointSnapper {
+public struct PointSnapper: Sendable {
     public init() {}
 
     // Threshold is angular, not metric: how close two points look on screen depends on the

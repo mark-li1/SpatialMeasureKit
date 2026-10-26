@@ -1,7 +1,7 @@
 import Foundation
 
 /// Formats measurements expressed in meters into display-ready text.
-public struct ValueFormatter {
+public struct ValueFormatter: Sendable {
     private let locale: Locale
 
     /// - Parameter locale: drives the decimal separator and grouping of the formatted magnitude.

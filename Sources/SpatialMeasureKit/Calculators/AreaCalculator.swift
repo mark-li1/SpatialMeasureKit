@@ -8,7 +8,7 @@ public struct InscribedCircle: Equatable, Sendable {
     public let radius: Float
 }
 
-public struct AreaCalculator {
+public struct AreaCalculator: Sendable {
     public init() {}
 
     /// The largest circle that fits inside the region the outline `points` encloses, found with

@@ -1,6 +1,6 @@
 import simd
 
-public struct PolygonTriangulator {
+public struct PolygonTriangulator: Sendable {
     /// Three vertex indices, into the `points` array passed to `triangulate(_:)`, describing one
     /// triangle.
     public struct Triangle: Equatable, Sendable {

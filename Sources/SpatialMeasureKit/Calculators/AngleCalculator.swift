@@ -1,6 +1,6 @@
 import simd
 
-public struct AngleCalculator {
+public struct AngleCalculator: Sendable {
     public init() {}
 
     public func computeAngle(from a: SIMD3<Float>, vertex b: SIMD3<Float>, to c: SIMD3<Float>) -> Float? {
