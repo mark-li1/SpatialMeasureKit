@@ -14,5 +14,17 @@ public struct FormattedValue<Unit: Equatable & Sendable>: Equatable, Sendable {
     }
 }
 
+public protocol DisplayUnit: Equatable, Sendable {
+    var symbol: String { get }
+    var separator: String { get }
+}
+
+extension FormattedValue where Unit: DisplayUnit {
+    public var text: String {
+        value + unit.separator + unit.symbol
+    }
+}
+
 public typealias FormattedLength = FormattedValue<LengthUnit>
 public typealias FormattedArea = FormattedValue<AreaUnit>
+public typealias FormattedAngle = FormattedValue<AngleUnit>

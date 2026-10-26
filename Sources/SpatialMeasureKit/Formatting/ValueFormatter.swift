@@ -87,6 +87,15 @@ public struct ValueFormatter: Sendable {
         }
     }
 
+    public func formatAngle(degrees: Float, fractionDigits: Int = 0) -> FormattedAngle? {
+        precondition(fractionDigits >= 0, "fractionDigits must not be negative, got \(fractionDigits)")
+        guard degrees.isFinite else { return nil }
+
+        let scale = pow(10, Double(fractionDigits))
+        let rounded = (Double(degrees) * scale).rounded() / scale
+        return FormattedValue(value: number(rounded == 0 ? 0 : rounded, fractionDigits: fractionDigits), unit: .degrees)
+    }
+
     private func number(_ value: Double, fractionDigits: Int) -> String {
         value.formatted(
             .number

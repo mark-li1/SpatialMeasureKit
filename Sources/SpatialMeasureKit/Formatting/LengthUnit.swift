@@ -2,7 +2,7 @@
 ///
 /// This is the *result* of formatting, not a user preference — a single `UnitSystem` can yield
 /// more than one of these depending on magnitude.
-public enum LengthUnit: String, Sendable, CaseIterable {
+public enum LengthUnit: String, Sendable, CaseIterable, DisplayUnit {
     case meters
     case centimeters
     /// A combined feet-and-inches string such as `11' 3⅞"`, which carries its own symbols.
@@ -17,6 +17,13 @@ public enum LengthUnit: String, Sendable, CaseIterable {
         switch self {
         case .meters: "m"
         case .centimeters: "cm"
+        case .feetAndInches: ""
+        }
+    }
+
+    public var separator: String {
+        switch self {
+        case .meters, .centimeters: " "
         case .feetAndInches: ""
         }
     }

@@ -3,7 +3,7 @@
 /// Unlike `LengthUnit`, there is no self-describing compositional case — imperial area is always
 /// decimal square feet, never a feet-and-inches-style combination. Square feet and square inches
 /// aren't mixed in speech the way feet and inches are.
-public enum AreaUnit: String, Sendable, CaseIterable {
+public enum AreaUnit: String, Sendable, CaseIterable, DisplayUnit {
     case squareMeters
     case squareFeet
 
@@ -15,4 +15,6 @@ public enum AreaUnit: String, Sendable, CaseIterable {
         case .squareFeet: "ft²"
         }
     }
+
+    public var separator: String { " " }
 }
