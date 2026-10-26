@@ -8,8 +8,10 @@ public struct HeightCalculator: Sendable {
         cameraPosition: SIMD3<Float>,
         cameraForward: SIMD3<Float>
     ) -> SIMD3<Float>? {
+        let forwardLength = simd_length(cameraForward)
+        guard forwardLength > .ulpOfOne else { return nil }
         let d1 = SIMD3<Float>(0, 1, 0)
-        let d2 = cameraForward
+        let d2 = cameraForward / forwardLength
         let w = cameraPosition - bottomPoint
         let b = simd_dot(d1, d2)
         let d = simd_dot(d1, w)
