@@ -1,8 +1,7 @@
 import simd
 
 public struct PolygonTriangulator: Sendable {
-    /// Three vertex indices, into the `points` array passed to `triangulate(_:)`, describing one
-    /// triangle.
+    /// Three indices into `Triangulation.vertices` describing one triangle.
     public struct Triangle: Equatable, Sendable {
         public let a: Int
         public let b: Int
@@ -29,8 +28,8 @@ public struct PolygonTriangulator: Sendable {
 
     public init() {}
 
-    /// Triangles covering every region the outline `points` encloses. Unlike `triangulate(_:)`,
-    /// this handles outlines that cross or touch themselves: each enclosed region is covered once
+    /// Triangles covering every region the outline `points` encloses, including outlines that
+    /// cross or touch themselves: each enclosed region is covered once
     /// (nonzero winding rule), matching `AreaCalculator.computeArea(from:)`. `nil` for fewer than
     /// three points or degenerate (collinear) input.
     public func triangulation(of points: [SIMD3<Float>]) -> Triangulation? {
@@ -52,7 +51,7 @@ public struct PolygonTriangulator: Sendable {
     /// `points`. Handles concave outlines via ear clipping. Returns an empty array for fewer than
     /// three points, or for degenerate input (collinear points, zero-area polygon) the algorithm
     /// can't decompose. For an outline that may cross itself, use `triangulation(of:)`.
-    public func triangulate(_ points: [SIMD3<Float>]) -> [Triangle] {
+    func triangulate(_ points: [SIMD3<Float>]) -> [Triangle] {
         guard points.count >= 3 else { return [] }
 
         // A repeated point always sits exactly on a candidate ear's own corner, which the
