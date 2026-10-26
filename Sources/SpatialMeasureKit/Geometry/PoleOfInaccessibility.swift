@@ -10,7 +10,8 @@ import simd
 func poleOfInaccessibility(
     of polygon: [SIMD2<Float>],
     precision: Float,
-    preferring preferred: SIMD2<Float>
+    preferring preferred: SIMD2<Float>,
+    minimumRoom: Float? = nil
 ) -> (center: SIMD2<Float>, distance: Float)? {
     guard polygon.count >= 3,
           let minX = polygon.map(\.x).min(), let maxX = polygon.map(\.x).max(),
@@ -55,7 +56,15 @@ func poleOfInaccessibility(
     }
     guard best.distance > 0 else { return nil }
 
-    let enoughRoom = best.distance - precision
+    let enoughRoom: Float
+    if let minimumRoom {
+        guard best.distance >= minimumRoom else { return nil }
+        let preferredDistance = signedDistance(from: preferred, to: polygon)
+        if preferredDistance >= minimumRoom { return (preferred, preferredDistance) }
+        enoughRoom = minimumRoom
+    } else {
+        enoughRoom = best.distance - precision
+    }
     var chosen = best
     var chosenGap = simd_distance(best.center, preferred)
     var nearestFirst = CellQueue()

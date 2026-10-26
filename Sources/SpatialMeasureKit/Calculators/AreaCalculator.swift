@@ -22,17 +22,16 @@ public struct AreaCalculator: Sendable {
     /// fewer than three points, degenerate (collinear) input, or a sliver too thin to search at
     /// `precision`.
     public func largestInscribedCircle(of points: [SIMD3<Float>], precision: Float = 0.001) -> InscribedCircle? {
-        let ring = deduplicatedIndices(of: points)
-        guard ring.count >= 3 else { return nil }
-        let outline = ring.map { points[$0] }
-        let normal = unsignedNormal(from: outline)
-        guard let flat = projectOntoPlane(outline, normal: normal),
-              let regionCentroid = self.centroid(of: points),
-              let preferred = projectOntoPlane(regionCentroid, of: outline, normal: normal),
-              let pole = poleOfInaccessibility(of: flat, precision: max(precision, 1e-6), preferring: preferred),
-              let center = liftFromPlane(pole.center, of: outline, normal: normal)
-        else { return nil }
-        return InscribedCircle(center: center, radius: pole.distance)
+        searchCircle(in: points, nearest: nil, minimumRoom: nil, precision: precision)
+    }
+
+    public func inscribedCircle(
+        of points: [SIMD3<Float>],
+        radius: Float,
+        nearest target: SIMD3<Float>? = nil,
+        precision: Float = 0.001
+    ) -> InscribedCircle? {
+        searchCircle(in: points, nearest: target, minimumRoom: max(radius, 0), precision: precision)
     }
 
     /// How far `point` is from the nearest line of the outline `points`, measured in the outline's
@@ -99,6 +98,30 @@ public struct AreaCalculator: Sendable {
             let distance = abs(simd_dot(point - centroid, normal))
             worst = max(worst, distance)
         }
+    }
+
+    private func searchCircle(
+        in points: [SIMD3<Float>],
+        nearest target: SIMD3<Float>?,
+        minimumRoom: Float?,
+        precision: Float
+    ) -> InscribedCircle? {
+        let ring = deduplicatedIndices(of: points)
+        guard ring.count >= 3 else { return nil }
+        let outline = ring.map { points[$0] }
+        let normal = unsignedNormal(from: outline)
+        guard let flat = projectOntoPlane(outline, normal: normal),
+              let goal = target ?? centroid(of: points),
+              let preferred = projectOntoPlane(goal, of: outline, normal: normal),
+              let pole = poleOfInaccessibility(
+                of: flat,
+                precision: max(precision, 1e-6),
+                preferring: preferred,
+                minimumRoom: minimumRoom
+              ),
+              let center = liftFromPlane(pole.center, of: outline, normal: normal)
+        else { return nil }
+        return InscribedCircle(center: center, radius: pole.distance)
     }
 
     private func planeNormal(of points: [SIMD3<Float>]) -> SIMD3<Float>? {
