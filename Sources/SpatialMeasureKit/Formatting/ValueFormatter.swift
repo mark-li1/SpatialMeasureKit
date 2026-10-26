@@ -18,11 +18,13 @@ public struct ValueFormatter: Sendable {
     /// - Parameters:
     ///   - meters: the length to format. Must be finite and non-negative.
     ///   - system: the unit system to present the length in.
-    ///   - fractionDigits: digits after the decimal separator. Applies to metric output only;
-    ///     imperial precision is the eighth-inch it rounds to, not a count of decimal places.
+    ///   - fractionDigits: digits after the decimal separator. Must not be negative. Applies to
+    ///     metric output only; imperial precision is the eighth-inch it rounds to, not a count of
+    ///     decimal places.
     /// - Returns: the formatted length, or `nil` if `meters` is negative, not finite, or too
     ///   large to represent.
     public func formatLength(meters: Float, system: UnitSystem, fractionDigits: Int = 2) -> FormattedLength? {
+        precondition(fractionDigits >= 0, "fractionDigits must not be negative, got \(fractionDigits)")
         guard meters.isFinite, meters >= 0 else { return nil }
 
         switch system {
@@ -46,14 +48,14 @@ public struct ValueFormatter: Sendable {
         guard let length = ImperialLength(meters: meters) else { return nil }
 
         // A zero component is left unsaid: `12'`, not `12' 0"`; `8¼"`, not `0' 8¼"`.
-        let inchPart = (length.inches > 0 ? "\(length.inches)" : "") + length.fractionGlyph
+        let inchPart = (length.inches > 0 ? number(Double(length.inches), fractionDigits: 0) : "") + length.fractionGlyph
         let feetPart = number(Double(length.feet), fractionDigits: 0)
 
         let value = switch (length.feet > 0, inchPart.isEmpty) {
         case (true, false): "\(feetPart)' \(inchPart)\""
         case (true, true): "\(feetPart)'"
         case (false, false): "\(inchPart)\""
-        case (false, true): "0\""
+        case (false, true): "\(number(0, fractionDigits: 0))\""
         }
         return FormattedValue(value: value, unit: .feetAndInches)
     }
@@ -66,9 +68,11 @@ public struct ValueFormatter: Sendable {
     /// - Parameters:
     ///   - squareMeters: the area to format. Must be finite and non-negative.
     ///   - system: the unit system to present the area in.
-    ///   - fractionDigits: digits after the decimal separator, for both unit systems.
+    ///   - fractionDigits: digits after the decimal separator, for both unit systems. Must not be
+    ///     negative.
     /// - Returns: the formatted area, or `nil` if `squareMeters` is negative or not finite.
     public func formatArea(squareMeters: Float, system: UnitSystem, fractionDigits: Int = 2) -> FormattedArea? {
+        precondition(fractionDigits >= 0, "fractionDigits must not be negative, got \(fractionDigits)")
         guard squareMeters.isFinite, squareMeters >= 0 else { return nil }
 
         switch system {
