@@ -4,7 +4,9 @@ import simd
 /// distance, found with the polylabel algorithm (Agafonkin, 2016) to within `precision`. Inside
 /// means a nonzero winding number. Among points within `precision` of the farthest, returns the
 /// one nearest `preferred`, so near-ties (a rectangle's whole middle line) resolve to one stable
-/// point. `nil` for degenerate input or when no inside point is found.
+/// point. `nil` for degenerate input, for a polygon whose bounding box is no wider than
+/// `precision` across (as in Mapbox's polylabel, so a sliver can't flood the search with cells), or
+/// when no inside point is found.
 func poleOfInaccessibility(
     of polygon: [SIMD2<Float>],
     precision: Float,
@@ -15,7 +17,7 @@ func poleOfInaccessibility(
           let minY = polygon.map(\.y).min(), let maxY = polygon.map(\.y).max()
     else { return nil }
     let cellSize = min(maxX - minX, maxY - minY)
-    guard cellSize > .ulpOfOne else { return nil }
+    guard cellSize > max(precision, .ulpOfOne) else { return nil }
 
     func cell(at center: SIMD2<Float>, halfSize: Float) -> Cell {
         Cell(center: center, halfSize: halfSize, distance: signedDistance(from: center, to: polygon))

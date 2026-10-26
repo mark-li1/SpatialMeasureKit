@@ -19,7 +19,8 @@ public struct AreaCalculator: Sendable {
     /// points (a rectangle's whole middle line) gives one stable centre that moves only a little
     /// when the outline does. For an outline that crosses itself, the circle stays inside the
     /// enclosed regions (nonzero winding rule) and clear of every line of the outline. `nil` for
-    /// fewer than three points or degenerate (collinear) input.
+    /// fewer than three points, degenerate (collinear) input, or a sliver too thin to search at
+    /// `precision`.
     public func largestInscribedCircle(from points: [SIMD3<Float>], precision: Float = 0.001) -> InscribedCircle? {
         let ring = deduplicatedIndices(of: points)
         guard ring.count >= 3 else { return nil }
