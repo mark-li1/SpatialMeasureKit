@@ -20,6 +20,19 @@ public struct PointSnapper: Sendable {
         let grabCosine = cos(grabDegrees * .pi / 180)
         let releaseCosine = cos(releaseDegrees * .pi / 180)
 
+        // `contains` drops a lock whose measurement was undone since the last call.
+        var lockCosine: Float?
+        if let currentlySnapped, points.contains(currentlySnapped) {
+            let toLock = currentlySnapped - cameraPosition
+            let distance = simd_length(toLock)
+            if distance > .ulpOfOne {
+                lockCosine = simd_dot(aim, toLock / distance)
+            }
+        }
+        if let lockCosine, lockCosine >= grabCosine {
+            return currentlySnapped
+        }
+
         var best: (point: SIMD3<Float>, cosine: Float, distance: Float)?
         for point in points {
             let toPoint = point - cameraPosition
@@ -41,14 +54,9 @@ public struct PointSnapper: Sendable {
         if let best { return best.point }
 
         // Nothing newly qualifies: hold the previous lock under the wider releaseDegrees so it
-        // doesn't flicker on/off right at the grabDegrees boundary. `contains` also drops a
-        // lock whose measurement was undone since the last call.
-        if let currentlySnapped, points.contains(currentlySnapped) {
-            let toPoint = currentlySnapped - cameraPosition
-            let distance = simd_length(toPoint)
-            if distance > .ulpOfOne, simd_dot(aim, toPoint / distance) >= releaseCosine {
-                return currentlySnapped
-            }
+        // doesn't flicker on/off right at the grabDegrees boundary.
+        if let lockCosine, lockCosine >= releaseCosine {
+            return currentlySnapped
         }
 
         return nil
