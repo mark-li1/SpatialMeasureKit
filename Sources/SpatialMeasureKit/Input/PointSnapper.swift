@@ -13,6 +13,12 @@ public struct PointSnapper: Sendable {
         grabDegrees: Float = 2,
         releaseDegrees: Float = 4
     ) -> SIMD3<Float>? {
+        precondition(grabDegrees >= 0, "grabDegrees must not be negative, got \(grabDegrees)")
+        precondition(
+            releaseDegrees >= grabDegrees,
+            "releaseDegrees (\(releaseDegrees)) must not be smaller than grabDegrees (\(grabDegrees))"
+        )
+        precondition(releaseDegrees <= 180, "releaseDegrees must not be above 180, got \(releaseDegrees)")
         let aimVector = candidate - cameraPosition
         let aimLength = simd_length(aimVector)
         guard aimLength > .ulpOfOne else { return nil }

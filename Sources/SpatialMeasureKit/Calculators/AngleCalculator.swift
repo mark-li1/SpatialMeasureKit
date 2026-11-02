@@ -8,6 +8,7 @@ public struct AngleCalculator: Sendable {
         let v1 = a - b
         let v2 = c - b
         let radians = atan2(simd_length(simd_cross(v1, v2)), simd_dot(v1, v2))
-        return radians * 180 / .pi
+        let degrees = radians * 180 / .pi
+        return degrees.isFinite ? degrees : nil
     }
 }
