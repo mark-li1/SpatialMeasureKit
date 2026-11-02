@@ -9,8 +9,8 @@ public struct Tilt: Equatable, Sendable {
     public let direction: SIMD2<Float>?
 
     // The compiler-synthesized memberwise init for a public struct is only `internal`, so
-    // callers outside this package (the app, or a smoothing layer that rebuilds a Tilt from
-    // blended values) need this explicit public one.
+    // callers outside this package (e.g. a smoothing layer that rebuilds a Tilt from blended
+    // values) need this explicit public one.
     public init(degrees: Float, direction: SIMD2<Float>?) {
         self.degrees = degrees
         self.direction = direction
@@ -23,7 +23,7 @@ public struct Roll: Equatable, Sendable {
     /// "up" — small in ordinary use (±45° at most). What a numeric readout should show. Respects
     /// `relativeTo:`.
     public let degrees: Float
-/// The device's tilt direction in the screen's own x/y plane, as a unit vector — always
+    /// The device's tilt direction in the screen's own x/y plane, as a unit vector — always
     /// absolute (ignores `relativeTo:`, unlike `degrees`). Lets a caller visually rotate an
     /// indicator so it tracks the device's true physical orientation continuously, without the
     /// snapping `degrees` applies. Smooth this as a vector (blend + renormalise, same trick as
@@ -40,10 +40,14 @@ public struct Roll: Equatable, Sendable {
 public struct LevelCalculator: Sendable {
     public init() {}
 
-    /// - deviceUp: the world's up axis expressed in the device's own axes. A device lying
-    ///   face-up gives roughly `[0, 0, 1]`. Need not be normalised.
-    /// - reference: the value `deviceUp` had when the user locked a zero. `nil` measures
-    ///   against true horizontal.
+    /// How far the device is tilted from lying flat (or from `reference`), and which way it
+    /// leans. See `roll(deviceUp:relativeTo:)` for a device held upright.
+    ///
+    /// - Parameters:
+    ///   - deviceUp: the world's up axis expressed in the device's own axes. A device lying
+    ///     face-up gives roughly `[0, 0, 1]`. Need not be normalised.
+    ///   - reference: the value `deviceUp` had when the user locked a zero. `nil` measures
+    ///     against true horizontal.
     /// - Returns: `nil` when either vector is zero-length, or when the reference points
     ///   opposite the screen normal (the rotation between them is undefined).
     public func tilt(deviceUp: SIMD3<Float>, relativeTo reference: SIMD3<Float>? = nil) -> Tilt? {
@@ -80,11 +84,14 @@ public struct LevelCalculator: Sendable {
     /// physical edges (top/right/bottom/left) is currently closest to true vertical — not always
     /// the screen's own top edge. Only meaningful when the device is held close to upright; see
     /// `tilt(deviceUp:relativeTo:)` for the complementary "is it flat" case.
-    /// - deviceUp: same input as `tilt(deviceUp:relativeTo:)`. Only x/y are used — deliberately ignores lean
-    ///   toward/away from the viewer, since that doesn't affect whether an edge is plumb.
-    /// - reference: the roll (degrees) to measure relative to, e.g. the device's angle when the
-    ///   user locked it. Only its value modulo 90° matters, so a previous `degrees` and a
-    ///   continuous angle both work. `nil` measures against true vertical.
+    ///
+    /// - Parameters:
+    ///   - deviceUp: same input as `tilt(deviceUp:relativeTo:)`. Only x/y are used — deliberately
+    ///     ignores lean toward/away from the viewer, since that doesn't affect whether an edge is
+    ///     plumb.
+    ///   - reference: the roll (degrees) to measure relative to, e.g. the device's angle when the
+    ///     user locked it. Only its value modulo 90° matters, so a previous `degrees` and a
+    ///     continuous angle both work. `nil` measures against true vertical.
     /// - Returns: `nil` when x and y are both negligible — deviceUp points nearly straight through
     ///   the screen, meaning the device is flat, not upright, and roll is undefined.
     public func roll(deviceUp: SIMD3<Float>, relativeTo reference: Float? = nil) -> Roll? {

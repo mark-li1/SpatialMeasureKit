@@ -1,10 +1,10 @@
 import simd
 
-/// The largest circle that fits inside a polygon, lying in the polygon's best-fit plane.
+/// A circle that fits inside a polygon, lying in the polygon's best-fit plane.
 public struct InscribedCircle: Equatable, Sendable {
-    /// The pole of inaccessibility: the inside point farthest from the outline.
+    /// The centre of the circle, inside the region the outline encloses.
     public let center: SIMD3<Float>
-    /// The distance from `center` to the nearest point of the outline, in the points' unit.
+    /// The distance from `center` to the nearest point of the outline, in meters.
     public let radius: Float
 }
 
@@ -12,14 +12,14 @@ public struct AreaCalculator: Sendable {
     public init() {}
 
     /// The largest circle that fits inside the region the outline `points` encloses, found with
-    /// the polylabel algorithm (Agafonkin, 2016) to within `precision`, in the points' unit. Its
-    /// centre is the inside point farthest from the outline — unlike `centroid(of:)`, it stays
-    /// inside concave shapes and away from the edges. Among circles within `precision` of the
-    /// largest, the one centred nearest `centroid(of:)` wins, so a shape with many equally roomy
-    /// points (a rectangle's whole middle line) gives one stable centre that moves only a little
-    /// when the outline does. For an outline that crosses itself, the circle stays inside the
-    /// enclosed regions (nonzero winding rule) and clear of every line of the outline. `nil` for
-    /// fewer than three points, degenerate (collinear) input, or a sliver too thin to search at
+    /// the polylabel algorithm (Agafonkin, 2016) to within `precision` meters. Its centre is the
+    /// inside point farthest from the outline — unlike `centroid(of:)`, it stays inside concave
+    /// shapes and away from the edges. Among circles within `precision` of the largest, the one
+    /// centred nearest `centroid(of:)` wins, so a shape with many equally roomy points (a
+    /// rectangle's whole middle line) gives one stable centre that moves only a little when the
+    /// outline does. For an outline that crosses itself, the circle stays inside the enclosed
+    /// regions (nonzero winding rule) and clear of every line of the outline. `nil` for fewer
+    /// than three points, degenerate (collinear) input, or a sliver too thin to search at
     /// `precision`.
     public func largestInscribedCircle(of points: [SIMD3<Float>], precision: Float = 0.001) -> InscribedCircle? {
         searchCircle(in: points, nearest: nil, minimumRoom: nil, precision: precision)
@@ -34,11 +34,11 @@ public struct AreaCalculator: Sendable {
         searchCircle(in: points, nearest: target, minimumRoom: max(radius, 0), precision: precision)
     }
 
-    /// How far `point` is from the nearest line of the outline `points`, measured in the outline's
-    /// best-fit plane: positive inside the enclosed regions (nonzero winding rule), negative
-    /// outside. Compare it with `largestInscribedCircle(of:precision:)`'s radius to tell whether a
-    /// spot still has most of the room the outline offers. `nil` for fewer than three points or
-    /// degenerate (collinear) input.
+    /// How far, in meters, `point` is from the nearest line of the outline `points`, measured in
+    /// the outline's best-fit plane: positive inside the enclosed regions (nonzero winding rule),
+    /// negative outside. Compare it with `largestInscribedCircle(of:precision:)`'s radius to tell
+    /// whether a spot still has most of the room the outline offers. `nil` for fewer than three
+    /// points or degenerate (collinear) input.
     public func clearance(at point: SIMD3<Float>, in points: [SIMD3<Float>]) -> Float? {
         let ring = deduplicatedIndices(of: points)
         guard ring.count >= 3 else { return nil }
@@ -50,9 +50,9 @@ public struct AreaCalculator: Sendable {
         return signedDistance(from: flatPoint, to: flat)
     }
 
-    /// Area enclosed by the outline `points`, in the square of their unit. An outline that crosses
-    /// or touches itself counts every enclosed region once (nonzero winding rule), so a bow-tie
-    /// measures the sum of its two loops rather than their difference.
+    /// Area enclosed by the outline `points`, in square meters. An outline that crosses or touches
+    /// itself counts every enclosed region once (nonzero winding rule), so a bow-tie measures the
+    /// sum of its two loops rather than their difference.
     public func area(of points: [SIMD3<Float>]) -> Float {
         guard points.count >= 3 else { return 0 }
         if let arrangement = PolygonArrangement(crossingOutline: points) {
