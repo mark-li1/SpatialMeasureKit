@@ -11,12 +11,19 @@ public struct OneEuroFilter: Sendable {
     private var lastTime: TimeInterval?
 
     public init(minCutoff: Float, beta: Float, velocityCutoff: Float = 1) {
+        precondition(minCutoff > 0 && minCutoff.isFinite, "minCutoff must be positive and finite, got \(minCutoff)")
+        precondition(beta >= 0 && beta.isFinite, "beta must be finite and not negative, got \(beta)")
+        precondition(
+            velocityCutoff > 0 && velocityCutoff.isFinite,
+            "velocityCutoff must be positive and finite, got \(velocityCutoff)"
+        )
         self.minCutoff = minCutoff
         self.beta = beta
         self.velocityCutoff = velocityCutoff
     }
 
     public mutating func filter(_ newValue: SIMD3<Float>, at time: TimeInterval) -> SIMD3<Float> {
+        guard newValue.isFinite, time.isFinite else { return value ?? newValue }
         guard let value, let lastTime, time > lastTime else {
             reset(to: newValue, at: time)
             return newValue
@@ -32,8 +39,8 @@ public struct OneEuroFilter: Sendable {
     }
 
     public mutating func reset(to newValue: SIMD3<Float>? = nil, at time: TimeInterval? = nil) {
-        value = newValue
-        lastTime = time
+        value = newValue?.isFinite == true ? newValue : nil
+        lastTime = time?.isFinite == true ? time : nil
         velocity = .zero
     }
 
@@ -41,4 +48,8 @@ public struct OneEuroFilter: Sendable {
         let r = 2 * .pi * cutoff * elapsed
         return r / (r + 1)
     }
+}
+
+private extension SIMD3 where Scalar == Float {
+    var isFinite: Bool { x.isFinite && y.isFinite && z.isFinite }
 }
