@@ -188,20 +188,6 @@ struct PolygonTriangulatorTests {
         #expect(abs(translatedArea - baseline) < 0.01)
     }
 
-    private let bowTie = [
-        SIMD3<Float>(0, 0, 0),
-        SIMD3<Float>(2, 0, 0),
-        SIMD3<Float>(0, 0, 2),
-        SIMD3<Float>(2, 0, 2),
-    ]
-
-    private func pentagram(radius: Float) -> [SIMD3<Float>] {
-        (0..<5).map { k in
-            let angle = Float.pi / 2 + Float((2 * k) % 5) * 2 * .pi / 5
-            return SIMD3<Float>(radius * cos(angle), 0, radius * sin(angle))
-        }
-    }
-
     private func isCounterClockwise(_ triangulation: PolygonTriangulator.Triangulation) -> Bool {
         triangulation.triangles.allSatisfy { triangle in
             let a = triangulation.vertices[triangle.a]

@@ -41,13 +41,13 @@ struct DistanceCalculatorTests {
         #expect(abs(result - 1.7320508) < 0.0001)
     }
 
-    @Test("Computes 0 for empty input")
+    @Test("length(of:) is 0 for empty input")
     func lengthEmptyInput() {
         let sut = DistanceCalculator()
         #expect(sut.length(of: []) == 0)
     }
 
-    @Test("Computes 0 for a single point")
+    @Test("length(of:) is 0 for a single point")
     func lengthSinglePoint() {
         let sut = DistanceCalculator()
         #expect(sut.length(of: [SIMD3<Float>(1, 2, 3)]) == 0)
@@ -119,13 +119,13 @@ struct DistanceCalculatorTests {
         #expect(abs(sut.length(of: points.reversed()) - sut.length(of: points)) < 0.0001)
     }
 
-    @Test("Computes 0 for empty input")
+    @Test("perimeter(of:) is 0 for empty input")
     func perimeterEmptyInput() {
         let sut = DistanceCalculator()
         #expect(sut.perimeter(of: []) == 0)
     }
 
-    @Test("Computes 0 for a single point")
+    @Test("perimeter(of:) is 0 for a single point")
     func perimeterSinglePoint() {
         let sut = DistanceCalculator()
         #expect(sut.perimeter(of: [SIMD3<Float>(1, 2, 3)]) == 0)

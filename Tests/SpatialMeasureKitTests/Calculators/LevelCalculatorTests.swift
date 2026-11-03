@@ -72,7 +72,7 @@ struct LevelCalculatorTests {
         #expect(abs(result.degrees - 0.05) < 0.005)
     }
 
-    @Test("Result is unchanged when deviceUp is not normalised")
+    @Test("tilt is unchanged when deviceUp is not normalised")
     func unnormalisedInput() throws {
         let sut = LevelCalculator()
         let normalised = SIMD3<Float>(1, 0, 0)
@@ -248,7 +248,7 @@ struct LevelCalculatorTests {
         #expect(abs(result.degrees - (-44)) < 0.01)
     }
 
-    @Test("Result is unchanged when deviceUp is not normalised")
+    @Test("roll is unchanged when deviceUp is not normalised")
     func rollUnnormalisedInput() throws {
         let sut = LevelCalculator()
         let normalised = SIMD3<Float>(0.6, 0.8, 0)
