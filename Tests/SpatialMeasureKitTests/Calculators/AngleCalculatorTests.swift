@@ -100,4 +100,34 @@ struct AngleCalculatorTests {
 
         #expect(sut.angle(from: a, vertex: vertex, to: vertex) == nil)
     }
+
+    @Test("Keeps a 0.01° angle instead of rounding it to 0°")
+    func tinyAngleKeepsPrecision() throws {
+        let sut = AngleCalculator()
+        let radians: Float = 0.01 * .pi / 180
+
+        let result = try #require(sut.angle(from: SIMD3(1, 0, 0), vertex: .zero, to: SIMD3(cos(radians), sin(radians), 0)))
+
+        #expect(abs(result - 0.01) < 0.0005)
+    }
+
+    @Test("Keeps a 179.99° angle instead of rounding it to 180°")
+    func nearlyStraightAngleKeepsPrecision() throws {
+        let sut = AngleCalculator()
+        let radians: Float = 0.01 * .pi / 180
+
+        let result = try #require(sut.angle(from: SIMD3(1, 0, 0), vertex: .zero, to: SIMD3(-cos(radians), sin(radians), 0)))
+
+        #expect(abs(result - 179.99) < 0.0005)
+    }
+
+    @Test("Returns nil for a point at infinity or NaN instead of a NaN angle")
+    func rejectsNonFinitePoints() {
+        let sut = AngleCalculator()
+        let vertex = SIMD3<Float>(0, 0, 0)
+        let c = SIMD3<Float>(0, 1, 0)
+
+        #expect(sut.angle(from: SIMD3(.infinity, 0, 0), vertex: vertex, to: c) == nil)
+        #expect(sut.angle(from: SIMD3(.nan, 0, 0), vertex: vertex, to: c) == nil)
+    }
 }

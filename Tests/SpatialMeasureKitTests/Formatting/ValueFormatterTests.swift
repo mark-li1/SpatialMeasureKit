@@ -120,6 +120,16 @@ struct ValueFormatterTests {
                 == FormattedValue(value: "0\"", unit: .feetAndInches))
     }
 
+    @Test("Imperial lengths use the locale's digits for feet, inches and zero")
+    func imperialLocalizedDigits() {
+        let arabic = ValueFormatter(locale: Locale(identifier: "ar_SA"))
+
+        #expect(arabic.formatLength(meters: 3.45, system: .imperial)
+                == FormattedValue(value: "١١' ٣⅞\"", unit: .feetAndInches))
+        #expect(arabic.formatLength(meters: 0, system: .imperial)
+                == FormattedValue(value: "٠\"", unit: .feetAndInches))
+    }
+
     @Test("fractionDigits does not affect imperial output")
     func imperialIgnoresFractionDigits() {
         let coarse = sut.formatLength(meters: 3.45, system: .imperial, fractionDigits: 0)
@@ -198,4 +208,98 @@ struct ValueFormatterTests {
         #expect(!result.value.contains("'"))
         #expect(!result.value.contains("\""))
     }
+
+    // MARK: - Angle
+
+    @Test("Rounds degrees half away from zero", arguments: [
+        (Float(36.5), "37"),
+        (0.5, "1"),
+        (-0.5, "-1"),
+    ])
+    func angleRoundsHalfAwayFromZero(degrees: Float, expected: String) {
+        #expect(sut.formatAngle(degrees: degrees) == FormattedValue(value: expected, unit: .degrees))
+    }
+
+    @Test("A small negative angle reads 0°, never -0°")
+    func angleNeverPrintsNegativeZero() {
+        #expect(sut.formatAngle(degrees: -0.3) == FormattedValue(value: "0", unit: .degrees))
+        #expect(sut.formatAngle(degrees: -0.004, fractionDigits: 2) == FormattedValue(value: "0.00", unit: .degrees))
+    }
+
+    @Test("Honors a custom fraction-digit count for angles")
+    func angleCustomFractionDigits() {
+        #expect(sut.formatAngle(degrees: 12.125, fractionDigits: 2) == FormattedValue(value: "12.13", unit: .degrees))
+    }
+
+    @Test("Returns nil for a NaN or infinite angle")
+    func angleRejectsNonFinite() {
+        #expect(sut.formatAngle(degrees: .nan) == nil)
+        #expect(sut.formatAngle(degrees: .infinity) == nil)
+    }
+
+    // MARK: - Rounding and negative zero
+
+    @Test("Rounds a tie away from zero: 1.125 m reads 1.13 m, not 1.12 m")
+    func metricRoundsTieAwayFromZero() {
+        #expect(sut.formatLength(meters: 1.125, system: .metric) == FormattedValue(value: "1.13", unit: .meters))
+    }
+
+    @Test("Rounds a tie away from zero with no fraction digits: 2.5 m reads 3 m, not 2 m")
+    func metricRoundsTieAwayFromZeroWithoutFraction() {
+        let result = sut.formatLength(meters: 2.5, system: .metric, fractionDigits: 0)
+
+        #expect(result == FormattedValue(value: "3", unit: .meters))
+    }
+
+    @Test("Rounds an area tie away from zero: 0.125 m² reads 0.13 m², not 0.12 m²")
+    func areaRoundsTieAwayFromZero() {
+        #expect(sut.formatArea(squareMeters: 0.125, system: .metric)
+                == FormattedValue(value: "0.13", unit: .squareMeters))
+    }
+
+    @Test("Lengths, areas and angles round the same tie the same way")
+    func tiesRoundAlikeForEveryKind() throws {
+        let length = try #require(sut.formatLength(meters: 1.125, system: .metric))
+        let area = try #require(sut.formatArea(squareMeters: 1.125, system: .metric))
+        let angle = try #require(sut.formatAngle(degrees: 1.125, fractionDigits: 2))
+
+        #expect(length.value == "1.13")
+        #expect(area.value == "1.13")
+        #expect(angle.value == "1.13")
+    }
+
+    @Test("Negative zero length reads 0 cm, not -0 cm")
+    func metricNegativeZero() {
+        #expect(sut.formatLength(meters: -0.0, system: .metric) == FormattedValue(value: "0", unit: .centimeters))
+    }
+
+    @Test("Negative zero area reads 0.00, not -0.00, in both unit systems")
+    func areaNegativeZero() {
+        #expect(sut.formatArea(squareMeters: -0.0, system: .metric)
+                == FormattedValue(value: "0.00", unit: .squareMeters))
+        #expect(sut.formatArea(squareMeters: -0.0, system: .imperial)
+                == FormattedValue(value: "0.00", unit: .squareFeet))
+    }
+
+    #if compiler(>=6.2) && os(macOS)
+    @Test("Stops with its own message on a negative fractionDigits for every kind of value")
+    func negativeFractionDigitsStop() async throws {
+        let length = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+            _ = ValueFormatter().formatLength(meters: 1, system: .metric, fractionDigits: -1)
+        }
+        let area = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+            _ = ValueFormatter().formatArea(squareMeters: 1, system: .metric, fractionDigits: -1)
+        }
+        let angle = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+            _ = ValueFormatter().formatAngle(degrees: 1, fractionDigits: -1)
+        }
+
+        #if DEBUG
+        for result in [length, area, angle] {
+            let message = String(decoding: try #require(result).standardErrorContent, as: UTF8.self)
+            #expect(message.contains("fractionDigits must not be negative"))
+        }
+        #endif
+    }
+    #endif
 }

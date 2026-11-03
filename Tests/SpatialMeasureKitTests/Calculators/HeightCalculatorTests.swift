@@ -23,6 +23,20 @@ struct HeightCalculatorTests {
         #expect(abs(result.z - 0) < 0.001)
     }
 
+    @Test("A camera direction that isn't unit length gives the same top point")
+    func nonUnitCameraForward() throws {
+        let sut = HeightCalculator()
+        let bottomPoint = SIMD3<Float>(0, 0, 0)
+        let cameraPosition = SIMD3<Float>(3, 0, 0)
+        let direction = simd_normalize(SIMD3<Float>(0, 4, 0) - cameraPosition)
+
+        let doubled = try #require(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: direction * 2))
+        let halved = try #require(sut.topPoint(bottomPoint: bottomPoint, cameraPosition: cameraPosition, cameraForward: direction * 0.5))
+
+        #expect(abs(doubled.y - 4) < 0.001)
+        #expect(abs(halved.y - 4) < 0.001)
+    }
+
     @Test("Computes a small positive height near the zero boundary")
     func nearZeroHeight() throws {
         let sut = HeightCalculator()

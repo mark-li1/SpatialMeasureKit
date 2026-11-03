@@ -390,6 +390,26 @@ struct AreaCalculatorTests {
         #expect(abs(sut.area(of: unevenBowTie) - 1.25) < 0.001)
     }
 
+    @Test("A bow-tie on the floor has a vertical normal, not a wall's")
+    func bowTieNormalIsVertical() throws {
+        let sut = AreaCalculator()
+        let normal = try #require(sut.normal(of: bowTie))
+
+        #expect(abs(normal.y) > 0.999)
+    }
+
+    @Test("A bow-tie with one corner 2 cm higher is off its plane by about 1 cm, not 0.5 m")
+    func bowTiePlanarityErrorWithLiftedCorner() throws {
+        let sut = AreaCalculator()
+        var lifted = bowTie
+        lifted[3].y = 0.02
+
+        let normal = try #require(sut.normal(of: lifted))
+
+        #expect(abs(normal.y) > 0.999)
+        #expect(sut.planarityError(of: lifted) < 0.015)
+    }
+
     @Test("Counts the middle of a 5-point star once, like its simple 10-point outline")
     func pentagramUnion() {
         let sut = AreaCalculator()
@@ -674,6 +694,102 @@ struct AreaCalculatorTests {
             SIMD3<Float>(1, 0, 0),
             SIMD3<Float>(2, 0, 0),
         ]) == nil)
+    }
+
+    @Test("largestInscribedCircle returns nil for a sliver thinner than precision instead of searching it")
+    func inscribedCircleSliverThinnerThanPrecision() {
+        let sut = AreaCalculator()
+        let sliver = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(3, 0, 0),
+            SIMD3<Float>(3, 0, 0.000002),
+            SIMD3<Float>(0, 0, 0.000002),
+        ]
+
+        #expect(sut.largestInscribedCircle(of: sliver, precision: 0.005) == nil)
+    }
+
+    // MARK: - inscribedCircle(of:radius:)
+
+    private let rectangleFourByTwo = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(4, 0, 0),
+        SIMD3<Float>(4, 0, 2),
+        SIMD3<Float>(0, 0, 2),
+    ]
+
+    private let lShape = [
+        SIMD3<Float>(0, 0, 0),
+        SIMD3<Float>(2, 0, 0),
+        SIMD3<Float>(2, 0, 1),
+        SIMD3<Float>(1, 0, 1),
+        SIMD3<Float>(1, 0, 2),
+        SIMD3<Float>(0, 0, 2),
+    ]
+
+    private let lShapeCentroid = SIMD3<Float>(2.5 / 3, 0, 2.5 / 3)
+
+    @Test("A rectangle gives its exact centre for any radius it has room for", arguments: [Float(0), 0.5, 1])
+    func inscribedCircleRectangleCentre(radius: Float) throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.inscribedCircle(of: rectangleFourByTwo, radius: radius))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(2, 0, 1)) < 0.01)
+    }
+
+    @Test("The returned radius is the real room at the centre, which can exceed the requested one")
+    func inscribedCircleReportsRealRoom() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.inscribedCircle(of: rectangleFourByTwo, radius: 0.5))
+
+        #expect(abs(circle.radius - 1) < 0.002)
+    }
+
+    @Test("In an L-shape a radius the centroid has room for keeps the centroid")
+    func inscribedCircleLShapeKeepsCentroid() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.inscribedCircle(of: lShape, radius: 0.2))
+
+        #expect(simd_distance(circle.center, lShapeCentroid) < 0.01)
+    }
+
+    @Test("A radius the centroid lacks moves only as far as needed, not to the largest circle")
+    func inscribedCircleLShapeMovesALittle() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.inscribedCircle(of: lShape, radius: 0.3))
+        let largest = try #require(sut.largestInscribedCircle(of: lShape))
+
+        let moved = simd_distance(circle.center, lShapeCentroid)
+
+        #expect(moved > 0.03 && moved < 0.15)
+        #expect(simd_distance(largest.center, lShapeCentroid) > 0.3)
+        #expect(circle.radius >= 0.3 - 0.001)
+        #expect(isClearOfEveryLine(circle, outline: lShape))
+    }
+
+    @Test("Returns nil when no point has that much room")
+    func inscribedCircleNoRoom() {
+        let sut = AreaCalculator()
+
+        #expect(sut.inscribedCircle(of: lShape, radius: 0.7) == nil)
+    }
+
+    @Test("In a bow-tie it finds a roomy point inside one loop, not on the crossing")
+    func inscribedCircleBowTieRadius() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.inscribedCircle(of: bowTie, radius: 0.3))
+
+        #expect(isInside(circle.center, outline: bowTie))
+        #expect(circle.radius >= 0.3 - 0.001)
+        #expect(isClearOfEveryLine(circle, outline: bowTie))
+    }
+
+    @Test("Honours a custom target: the roomy point nearest a corner")
+    func inscribedCircleCustomTarget() throws {
+        let sut = AreaCalculator()
+        let circle = try #require(sut.inscribedCircle(of: rectangleFourByTwo, radius: 0.5, nearest: SIMD3(0, 0, 0)))
+
+        #expect(simd_distance(circle.center, SIMD3<Float>(0.5, 0, 0.5)) < 0.01)
     }
 
     @Test("clearance is the distance to the nearest line: positive inside, negative outside")
