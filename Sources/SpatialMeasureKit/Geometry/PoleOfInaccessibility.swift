@@ -1,3 +1,5 @@
+// Adapted from Mapbox's polylabel (ISC license). See NOTICE.
+
 import simd
 
 /// The inside point of `polygon` farthest from its edges, and that distance, found with Mapbox's
