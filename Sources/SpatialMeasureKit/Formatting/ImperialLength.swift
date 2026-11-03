@@ -1,8 +1,6 @@
-/// A length decomposed into feet, whole inches, and eighths of an inch.
+/// A length split into feet, whole inches and eighths of an inch.
 ///
-/// Rounding happens exactly once, into a single integer count of eighths, before the parts are
-/// separated. A full twelve inches is therefore already a foot by the time `inches` is derived,
-/// so the `11' 12"` carry is unreachable rather than corrected.
+/// It rounds once, to a whole number of eighths, before splitting, so `11' 12"` can't happen.
 struct ImperialLength: Equatable {
     let feet: Int
     /// Whole inches left after the feet, `0..<12`.
@@ -13,13 +11,10 @@ struct ImperialLength: Equatable {
     private static let eighthsPerInch = 8
     private static let eighthsPerFoot = eighthsPerInch * ImperialConstants.inchesPerFoot
 
-    /// Eighths in lowest terms. The denominator is fixed, so reduction is a lookup rather than
-    /// a gcd — `2/8` is `¼` because the table says so.
+    /// Eighths in lowest terms, so 2/8 shows as ¼.
     private static let fractionGlyphs = ["", "⅛", "¼", "⅜", "½", "⅝", "¾", "⅞"]
 
-    /// - Parameter meters: must be non-negative and finite.
-    /// - Returns: `nil` if `meters` is negative, not finite, or too large to count in eighths
-    ///   of an inch without overflowing `Int`.
+    /// Returns `nil` for a negative or non-finite length, or one too large to count in eighths.
     init?(meters: Double) {
         guard meters >= 0 else { return nil }
 
@@ -32,7 +27,7 @@ struct ImperialLength: Equatable {
         eighths = totalEighths % Self.eighthsPerInch
     }
 
-    /// The fractional part as a single glyph, or an empty string when there is no fraction.
+    /// The fraction as one glyph, like `⅞`, or empty when there is none.
     var fractionGlyph: String {
         Self.fractionGlyphs[eighths]
     }

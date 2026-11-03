@@ -1,10 +1,27 @@
 import simd
 
+/// Locks the aim onto a nearby point, so a measurement can start or end exactly on it.
+///
+/// "Nearby" is an angle at the camera, not a distance, so the snap zone looks the same size on
+/// screen whether a point is close or far away.
 public struct PointSnapper: Sendable {
     public init() {}
 
-    // Threshold is angular, not metric: how close two points look on screen depends on the
-    // angle at the camera, not the distance between them in the real world.
+    /// The point to lock onto for this frame, or `nil` for none.
+    ///
+    /// Locks the nearest point within `grabDegrees` of the aim. A locked point is kept while it
+    /// stays within `grabDegrees`, even if another point gets closer. With no other point in
+    /// reach, it's kept until `releaseDegrees`, so the lock doesn't flicker at the edge. Call this
+    /// every frame and pass the previous result as `currentlySnapped`.
+    ///
+    /// - Parameters:
+    ///   - candidate: the raw aim position, for example a raycast hit.
+    ///   - points: the points that can be snapped to.
+    ///   - cameraPosition: where the camera is. Angles are measured from here.
+    ///   - currentlySnapped: the previous result. A lock whose point is no longer in `points` is
+    ///     dropped.
+    ///   - grabDegrees: how close the aim must come to lock a point. Must not be negative.
+    ///   - releaseDegrees: how far the aim must move to let go. Must be from `grabDegrees` to 180.
     public func snap(
         candidate: SIMD3<Float>,
         to points: [SIMD3<Float>],
@@ -26,7 +43,6 @@ public struct PointSnapper: Sendable {
         let grabCosine = cos(grabDegrees * .pi / 180)
         let releaseCosine = cos(releaseDegrees * .pi / 180)
 
-        // `contains` drops a lock whose measurement was undone since the last call.
         var lockCosine: Float?
         if let currentlySnapped, points.contains(currentlySnapped) {
             let toLock = currentlySnapped - cameraPosition
@@ -45,10 +61,8 @@ public struct PointSnapper: Sendable {
             let distance = simd_length(toPoint)
             guard distance > .ulpOfOne else { continue }
 
-            // dot of two unit vectors == cos(angle between them); comparing cosines instead
-            // of calling acos() avoids a trig call per candidate.
             let cosine = simd_dot(aim, toPoint / distance)
-            guard cosine >= grabCosine else { continue } // checks whether this point even close enough to be a snap candidate
+            guard cosine >= grabCosine else { continue }
 
             if let current = best {
                 let better = cosine > current.cosine || (cosine == current.cosine && distance < current.distance)
@@ -59,8 +73,6 @@ public struct PointSnapper: Sendable {
 
         if let best { return best.point }
 
-        // Nothing newly qualifies: hold the previous lock under the wider releaseDegrees so it
-        // doesn't flicker on/off right at the grabDegrees boundary.
         if let lockCosine, lockCosine >= releaseCosine {
             return currentlySnapped
         }

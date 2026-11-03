@@ -1,30 +1,39 @@
 import simd
 
-/// A circle that fits inside a polygon, lying in the polygon's best-fit plane.
+/// A circle that fits inside an outline, in the outline's plane.
 public struct InscribedCircle: Equatable, Sendable {
-    /// The centre of the circle, inside the region the outline encloses.
     public let center: SIMD3<Float>
-    /// The distance from `center` to the nearest point of the outline, in meters.
+    /// The distance from `center` to the nearest line of the outline, in meters.
     public let radius: Float
 }
 
+/// Measures flat shapes outlined by points: area, center, plane and how much room a spot has.
+///
+/// Points are in meters and should lie roughly on one surface. An outline may cross itself;
+/// every region it encloses then counts once (the nonzero winding rule).
 public struct AreaCalculator: Sendable {
     public init() {}
 
-    /// The largest circle that fits inside the region the outline `points` encloses, found with
-    /// the polylabel algorithm (Agafonkin, 2016) to within `precision` meters. Its centre is the
-    /// inside point farthest from the outline — unlike `centroid(of:)`, it stays inside concave
-    /// shapes and away from the edges. Among circles within `precision` of the largest, the one
-    /// centred nearest `centroid(of:)` wins, so a shape with many equally roomy points (a
-    /// rectangle's whole middle line) gives one stable centre that moves only a little when the
-    /// outline does. For an outline that crosses itself, the circle stays inside the enclosed
-    /// regions (nonzero winding rule) and clear of every line of the outline. `nil` for fewer
-    /// than three points, degenerate (collinear) input, or a sliver too thin to search at
-    /// `precision`.
+    /// The largest circle that fits inside the outline, found with the polylabel algorithm to
+    /// within `precision` meters.
+    ///
+    /// Its center is a good place for a label: unlike `centroid(of:)`, it stays inside concave
+    /// shapes. When many spots are equally roomy, the one nearest the centroid wins, so the center
+    /// doesn't jump around. Returns `nil` for fewer than three points, points on one line, or a
+    /// sliver thinner than `precision`.
     public func largestInscribedCircle(of points: [SIMD3<Float>], precision: Float = 0.001) -> InscribedCircle? {
         searchCircle(in: points, nearest: nil, minimumRoom: nil, precision: precision)
     }
 
+    /// The spot nearest `target` that has room for a circle of `radius`, found to within
+    /// `precision` meters.
+    ///
+    /// Useful for keeping a label near the middle of a shape: with no `target`, it stays at the
+    /// centroid while the label fits there, and moves only as far as it has to. The returned
+    /// radius is the real room at that spot, so it can be larger than `radius`.
+    ///
+    /// Returns `nil` when no spot has that much room, or for the outlines where
+    /// `largestInscribedCircle(of:precision:)` returns `nil`.
     public func inscribedCircle(
         of points: [SIMD3<Float>],
         radius: Float,
@@ -34,11 +43,10 @@ public struct AreaCalculator: Sendable {
         searchCircle(in: points, nearest: target, minimumRoom: max(radius, 0), precision: precision)
     }
 
-    /// How far, in meters, `point` is from the nearest line of the outline `points`, measured in
-    /// the outline's best-fit plane: positive inside the enclosed regions (nonzero winding rule),
-    /// negative outside. Compare it with `largestInscribedCircle(of:precision:)`'s radius to tell
-    /// whether a spot still has most of the room the outline offers. `nil` for fewer than three
-    /// points or degenerate (collinear) input.
+    /// How much room `point` has: its distance to the nearest line of the outline, in meters.
+    ///
+    /// Positive inside the shape, negative outside, measured in the outline's plane. Returns `nil`
+    /// for fewer than three points or points on one line.
     public func clearance(at point: SIMD3<Float>, in points: [SIMD3<Float>]) -> Float? {
         let ring = deduplicatedIndices(of: points)
         guard ring.count >= 3 else { return nil }
@@ -50,9 +58,10 @@ public struct AreaCalculator: Sendable {
         return signedDistance(from: flatPoint, to: flat)
     }
 
-    /// Area enclosed by the outline `points`, in square meters. An outline that crosses or touches
-    /// itself counts every enclosed region once (nonzero winding rule), so a bow-tie measures the
-    /// sum of its two loops rather than their difference.
+    /// The area the outline encloses, in square meters.
+    ///
+    /// A bow-tie counts both of its loops, so its area is their sum, not their difference.
+    /// Returns 0 for fewer than three points.
     public func area(of points: [SIMD3<Float>]) -> Float {
         guard points.count >= 3 else { return 0 }
         if let arrangement = PolygonArrangement(crossingOutline: points) {
@@ -61,21 +70,19 @@ public struct AreaCalculator: Sendable {
         return simd_length(newellNormal(from: points)) / 2
     }
 
-    /// Unit vector perpendicular to the polygon's best-fit plane, via Newell's method.
-    /// `nil` for fewer than three points or degenerate (collinear) input. An outline that crosses
-    /// itself has loops turning both ways, so there only the plane is meaningful, not the sign —
-    /// the same normal `PolygonTriangulator.triangulation(of:)` returns.
+    /// A unit vector perpendicular to the outline's plane.
+    ///
+    /// For an outline that crosses itself, only the plane matters, not which side the vector
+    /// points to. Returns `nil` for fewer than three points or points on one line.
     public func normal(of points: [SIMD3<Float>]) -> SIMD3<Float>? {
         guard points.count >= 3 else { return nil }
         return planeNormal(of: points)
     }
 
-    /// Area-weighted centroid of the polygon. `nil` for empty input. For an outline that crosses
-    /// itself, every enclosed region is weighted once, matching `area(of:)`.
+    /// The center of the enclosed area, weighted by area.
     ///
-    /// Falls back to the plain vertex average for fewer than three points, or for degenerate
-    /// (collinear) input the triangulator can't decompose — the area-weighted result is
-    /// undefined there since there's no area to weight by.
+    /// For an outline with no area (fewer than three points, or all on one line) this is the
+    /// average of the points. Returns `nil` only for an empty array.
     public func centroid(of points: [SIMD3<Float>]) -> SIMD3<Float>? {
         guard !points.isEmpty else { return nil }
         let vertexAverage = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
@@ -87,9 +94,10 @@ public struct AreaCalculator: Sendable {
         return weightedCentroid(of: triangles, vertices: points) ?? vertexAverage
     }
 
-    /// Worst-case distance, in meters, of any point from the polygon's best-fit plane.
-    /// `0` means the points are perfectly planar. A larger value means they don't all lie on
-    /// one surface — e.g. the trace wandered across a corner, or raycast noise is unusually high.
+    /// How far, in meters, the farthest point is from the outline's plane.
+    ///
+    /// 0 means all points lie on one surface. A large value usually means the outline went around
+    /// a corner, or the tracking was noisy.
     public func planarityError(of points: [SIMD3<Float>]) -> Float {
         guard points.count >= 3, let normal = planeNormal(of: points) else { return 0 }
 

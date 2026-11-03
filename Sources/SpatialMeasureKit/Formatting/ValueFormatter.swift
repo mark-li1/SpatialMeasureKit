@@ -1,28 +1,24 @@
 import Foundation
 
-/// Formats measurements expressed in meters into display-ready text.
+/// Turns lengths, areas and angles into text for the user's language and unit system.
+///
+/// Ties round away from zero, so 1.125 m shows as `1.13 m`, and a value that rounds to zero never
+/// shows a minus sign.
 public struct ValueFormatter: Sendable {
     private let locale: Locale
 
-    /// - Parameter locale: drives the decimal separator and grouping of the formatted magnitude.
+    /// Creates a formatter. `locale` decides the decimal separator, digit grouping and digits.
     public init(locale: Locale = .current) {
         self.locale = locale
     }
 
-    /// Formats a length given in meters for display in `system`.
+    /// Formats a length in meters for `system`.
     ///
-    /// Metric output falls back to centimeters below one meter, so short lengths read as
-    /// `45 cm` rather than `0.45 m`. Imperial output combines feet and inches, rounded to the
-    /// nearest eighth of an inch — `11' 3⅞"`.
+    /// Metric shows centimeters below one meter: `45 cm`, not `0.45 m`. Imperial shows feet and
+    /// inches to the nearest eighth, like `11' 3⅞"`, and ignores `fractionDigits`, which must not
+    /// be negative.
     ///
-    /// - Parameters:
-    ///   - meters: the length to format. Must be finite and non-negative.
-    ///   - system: the unit system to present the length in.
-    ///   - fractionDigits: digits after the decimal separator. Must not be negative. Applies to
-    ///     metric output only; imperial precision is the eighth-inch it rounds to, not a count of
-    ///     decimal places.
-    /// - Returns: the formatted length, or `nil` if `meters` is negative, not finite, or too
-    ///   large to represent.
+    /// Returns `nil` for a negative or non-finite length, or one too large to count in inches.
     public func formatLength(meters: Float, system: UnitSystem, fractionDigits: Int = 2) -> FormattedLength? {
         precondition(fractionDigits >= 0, "fractionDigits must not be negative, got \(fractionDigits)")
         guard meters.isFinite, meters >= 0 else { return nil }
@@ -60,17 +56,10 @@ public struct ValueFormatter: Sendable {
         return FormattedValue(value: value, unit: .feetAndInches)
     }
 
-    /// Formats an area given in square meters for display in `system`.
+    /// Formats an area in square meters for `system`, as square meters or square feet.
     ///
-    /// Unlike `formatLength`, both branches are plain decimal — area is never expressed as a
-    /// feet-and-inches-style combination, so `fractionDigits` applies to imperial output too.
-    ///
-    /// - Parameters:
-    ///   - squareMeters: the area to format. Must be finite and non-negative.
-    ///   - system: the unit system to present the area in.
-    ///   - fractionDigits: digits after the decimal separator, for both unit systems. Must not be
-    ///     negative.
-    /// - Returns: the formatted area, or `nil` if `squareMeters` is negative or not finite.
+    /// `fractionDigits` applies to both systems and must not be negative. Returns `nil` for a
+    /// negative or non-finite area.
     public func formatArea(squareMeters: Float, system: UnitSystem, fractionDigits: Int = 2) -> FormattedArea? {
         precondition(fractionDigits >= 0, "fractionDigits must not be negative, got \(fractionDigits)")
         guard squareMeters.isFinite, squareMeters >= 0 else { return nil }
@@ -87,6 +76,9 @@ public struct ValueFormatter: Sendable {
         }
     }
 
+    /// Formats an angle in degrees, like `37°`.
+    ///
+    /// `fractionDigits` must not be negative. Returns `nil` for NaN or infinity.
     public func formatAngle(degrees: Float, fractionDigits: Int = 0) -> FormattedAngle? {
         precondition(fractionDigits >= 0, "fractionDigits must not be negative, got \(fractionDigits)")
         guard degrees.isFinite else { return nil }

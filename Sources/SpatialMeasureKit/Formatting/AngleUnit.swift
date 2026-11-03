@@ -1,3 +1,4 @@
+/// The unit of a formatted angle.
 public enum AngleUnit: String, Sendable, CaseIterable, DisplayUnit {
     case degrees
 

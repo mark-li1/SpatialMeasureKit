@@ -1,5 +1,6 @@
 import simd
 
+/// Cuts an outline into triangles, for example to draw it as a filled shape.
 public struct PolygonTriangulator: Sendable {
     /// Three indices into `Triangulation.vertices` describing one triangle.
     public struct Triangle: Equatable, Sendable {
@@ -28,10 +29,11 @@ public struct PolygonTriangulator: Sendable {
 
     public init() {}
 
-    /// Triangles covering every region the outline `points` encloses, including outlines that
-    /// cross or touch themselves: each enclosed region is covered once
-    /// (nonzero winding rule), matching `AreaCalculator.area(of:)`. `nil` for fewer than
-    /// three points or degenerate (collinear) input.
+    /// Triangles that cover every region the outline encloses, once each, so they match
+    /// `AreaCalculator.area(of:)`.
+    ///
+    /// Works for concave outlines and ones that cross themselves. Returns `nil` for fewer than
+    /// three points or points on one line.
     public func triangulation(of points: [SIMD3<Float>]) -> Triangulation? {
         if let arrangement = PolygonArrangement(crossingOutline: points) {
             return Triangulation(
@@ -47,25 +49,19 @@ public struct PolygonTriangulator: Sendable {
         return Triangulation(vertices: points, triangles: triangles, normal: simd_normalize(normal))
     }
 
-    /// Triangles covering a simple (non-self-intersecting) planar polygon, as indices into
-    /// `points`. Handles concave outlines via ear clipping. Returns an empty array for fewer than
-    /// three points, or for degenerate input (collinear points, zero-area polygon) the algorithm
-    /// can't decompose. For an outline that may cross itself, use `triangulation(of:)`.
+    /// Ear-clips an outline that doesn't cross itself, giving indices into `points`. Empty for
+    /// fewer than three points or points on one line. For any outline, use `triangulation(of:)`.
     func triangulate(_ points: [SIMD3<Float>]) -> [Triangle] {
         guard points.count >= 3 else { return [] }
 
-        // A repeated point always sits exactly on a candidate ear's own corner, which the
-        // containment test below reads as "another vertex is in the way" — every ear gets
-        // rejected and the polygon is left half-clipped. Drop the repeats up front and map the
-        // emitted indices back, so callers still get indices into their original array.
+        // A repeated point makes every ear look blocked, so drop repeats and map indices back.
         let sourceIndices = deduplicatedIndices(of: points)
         guard sourceIndices.count >= 3 else { return [] }
         let vertices = sourceIndices.map { points[$0] }
 
         guard let projected = projectOntoPlane(vertices, normal: newellNormal(from: vertices)) else { return [] }
 
-        // Ear clipping works on a counter-clockwise ring; flip if Newell's normal gave us the
-        // opposite winding for this basis.
+        // Ear clipping needs a counter-clockwise ring.
         var ring = Array(vertices.indices)
         if signedArea(of: ring, points: projected) < 0 {
             ring.reverse()
@@ -84,8 +80,7 @@ public struct PolygonTriangulator: Sendable {
 
         while ring.count > 3 {
             guard let earPosition = findEar(in: ring, points: points) else {
-                // No ear found in a full pass over the ring — self-intersecting or degenerate
-                // input the algorithm can't make progress on. Stop rather than loop forever.
+                // No ear left means the outline crosses itself or has no area: stop, don't loop.
                 break
             }
 

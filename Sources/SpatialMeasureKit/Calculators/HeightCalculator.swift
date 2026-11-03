@@ -1,8 +1,19 @@
 import simd
 
+/// Measures heights straight up from a point.
+///
+/// World up is +y, as in ARKit and RealityKit.
 public struct HeightCalculator: Sendable {
     public init() {}
-    
+
+    /// The point straight above `bottomPoint` that the camera is aiming at.
+    ///
+    /// It's where the camera's line of sight passes closest to the vertical line through
+    /// `bottomPoint`, usually a point on the floor. The height is the result's `y` minus
+    /// `bottomPoint.y`. `cameraForward` can have any length.
+    ///
+    /// Returns `nil` when the camera looks almost straight up or down, or aims at or below
+    /// `bottomPoint`.
     public func topPoint(
         bottomPoint: SIMD3<Float>,
         cameraPosition: SIMD3<Float>,

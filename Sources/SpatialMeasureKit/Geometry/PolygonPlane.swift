@@ -1,8 +1,7 @@
 import simd
 
-/// Newell's method, computed about the centroid for float stability far from world origin.
-/// Shared by `AreaCalculator` (magnitude only) and `PolygonTriangulator` (direction, to project
-/// points onto the polygon's plane).
+/// Newell's normal, computed around the centroid so it stays precise far from the origin.
+/// Its length is twice the area.
 func newellNormal(from points: [SIMD3<Float>]) -> SIMD3<Float> {
     let centroid = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
     var normal = SIMD3<Float>.zero
@@ -31,9 +30,8 @@ func planeBasis(normal: SIMD3<Float>) -> (u: SIMD3<Float>, v: SIMD3<Float>)? {
     return (u, v)
 }
 
-/// A plane normal that ignores which way each part of the outline turns, so loops that wind in
-/// opposite directions (a bow-tie) reinforce each other instead of cancelling like Newell's.
-/// Its sign is arbitrary; only the plane it describes is meaningful.
+/// A plane normal that still works when loops turn opposite ways, like a bow-tie's, where
+/// Newell's normal cancels out. Only the plane matters, not the sign.
 func unsignedNormal(from points: [SIMD3<Float>]) -> SIMD3<Float> {
     let centroid = points.reduce(SIMD3<Float>.zero, +) / Float(points.count)
     let fan = points.indices.map { i in

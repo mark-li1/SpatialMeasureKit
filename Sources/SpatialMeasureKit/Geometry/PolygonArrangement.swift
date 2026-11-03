@@ -1,8 +1,7 @@
 import simd
 
-/// The regions enclosed by an outline that crosses or touches itself, cut into simple faces at
-/// every contact point. Only the faces the outline winds around are kept (nonzero winding rule),
-/// so every enclosed region counts once, however many times the outline circles it.
+/// The regions enclosed by an outline that crosses or touches itself, cut apart where it does.
+/// Each enclosed region counts once (the nonzero winding rule).
 struct PolygonArrangement {
     /// The input points at their original indices, followed by the points where the outline
     /// crosses itself.
@@ -14,8 +13,7 @@ struct PolygonArrangement {
     /// Total area of the enclosed regions.
     let area: Float
 
-    /// `nil` when the outline never crosses or touches itself, so callers keep their
-    /// simple-polygon path, or when it is degenerate.
+    /// `nil` when the outline never crosses or touches itself, or has no area.
     init?(crossingOutline points: [SIMD3<Float>]) {
         let ring = deduplicatedIndices(of: points)
         guard ring.count >= 3 else { return nil }

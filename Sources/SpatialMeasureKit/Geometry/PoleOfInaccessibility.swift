@@ -1,12 +1,11 @@
 import simd
 
-/// The point inside the closed outline `polygon` farthest from every one of its segments, and that
-/// distance, found with the polylabel algorithm (Agafonkin, 2016) to within `precision`. Inside
-/// means a nonzero winding number. Among points within `precision` of the farthest, returns the
-/// one nearest `preferred`, so near-ties (a rectangle's whole middle line) resolve to one stable
-/// point. `nil` for degenerate input, for a polygon whose bounding box is no wider than
-/// `precision` across (as in Mapbox's polylabel, so a sliver can't flood the search with cells), or
-/// when no inside point is found.
+/// The inside point of `polygon` farthest from its edges, and that distance, found with Mapbox's
+/// polylabel algorithm to within `precision`.
+///
+/// Among nearly equal points it returns the one nearest `preferred`. With `minimumRoom`, it
+/// returns the point nearest `preferred` that has at least that much room instead. Returns `nil`
+/// for a polygon no wider than `precision`, or when no inside point has enough room.
 func poleOfInaccessibility(
     of polygon: [SIMD2<Float>],
     precision: Float,

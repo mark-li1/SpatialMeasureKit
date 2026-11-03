@@ -1,11 +1,7 @@
-/// A measurement split into its magnitude and the unit that magnitude is expressed in.
-///
-/// The two are kept apart rather than joined into one string so callers can style, order, or
-/// localize them independently.
+/// A formatted number and its unit, kept apart so they can be styled differently.
 public struct FormattedValue<Unit: Equatable & Sendable>: Equatable, Sendable {
-    /// The magnitude, already rounded and localized — e.g. `"3.45"`, `"45"`.
+    /// The number, already rounded and localized, like `"3.45"`.
     public let value: String
-    /// The unit `value` is expressed in.
     public let unit: Unit
 
     public init(value: String, unit: Unit) {
@@ -14,12 +10,16 @@ public struct FormattedValue<Unit: Equatable & Sendable>: Equatable, Sendable {
     }
 }
 
+/// A unit that knows how it's written after a number.
 public protocol DisplayUnit: Equatable, Sendable {
+    /// The symbol, like `m`, `ft²` or `°`. Not translated: unit symbols are the same everywhere.
     var symbol: String { get }
+    /// What goes between the number and the symbol: a space before `m`, nothing before `°`.
     var separator: String { get }
 }
 
 extension FormattedValue where Unit: DisplayUnit {
+    /// The number and its unit, joined the right way: `3.50 m`, `11' 3⅞"`, `37°`.
     public var text: String {
         value + unit.separator + unit.symbol
     }
